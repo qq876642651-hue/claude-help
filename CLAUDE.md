@@ -9,7 +9,11 @@ Claude Help 是一组给 Claude Code 用的技能，外加一个显示额度的�
 - `skills/ch-init/`：往项目的 CLAUDE.md 写规则段，并建 `.claude/handoffs/`。规则只有一份来源，就是 `rules-template.md`。`writing-for-agents.md` 是写给 agent 看的文档时要遵守的要点。
 - `skills/ch-handoff/`：写交接文档，写完后按 ch-usage 的步骤记录一次额度。
 - `skills/ch-usage/`：记录账号额度。脚本 `record-usage.ps1` 只写 `%USERPROFILE%\.claude\claude-help\usage.json`。
-- `app/`：Claude Help 桌面软件（Electron）。左侧额度卡片，监视 `usage.json` 自动刷新；右侧分栏用 `WebContentsView` 显示收信网站（该站禁止 iframe 内嵌）。在 `app/` 下：`npm start` 开发运行，`npm run dist` 打包 NSIS 安装程序到 `app/dist/`，`npm run release` 发布到 GitHub Releases（ZhaoMCX/claude-help，需要 `GH_TOKEN`），软件靠 electron-updater 从那里自动更新。发版前先改 `app/package.json` 的 `version`。
+- `app/`：Claude Help 桌面软件（Electron）。左侧额度卡片，监视 `usage.json` 自动刷新；右侧分栏用 `WebContentsView` 显示收信网站（该站禁止 iframe 内嵌）。在 `app/` 下：`npm start` 开发运行，`npm run dist` 打包 NSIS 安装程序到 `app/dist/`，`npm run release` 发布到 GitHub Releases（ZhaoMCX/claude-help，需要 `GH_TOKEN`），软件靠 electron-updater 从那里自动更新。发版步骤：
+  1. 改 `app/package.json` 的 `version`，提交并推送。
+  2. 用 `gh release create v<版本> --target main --title v<版本> --notes "..."` 先建好 Release。如果让 electron-builder 自己建，它会同时发两个创建请求，其中一个报 422，导致 `latest.yml` 漏传。
+  3. 运行 `GH_TOKEN="$(gh auth token)" npm run release`。
+  4. 用 `gh release view` 确认 exe、`.blockmap`、`latest.yml` 三个文件都在，并且 `latest.yml` 里的 size 和 exe 一致。
 - `skills/ch-config/`：保存和应用桌面端的偏好设置，所有账号共用一份配置。
 
 开发约定：
