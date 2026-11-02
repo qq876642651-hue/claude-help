@@ -45,7 +45,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "ZhaoMCX",
+      "owner": "qq876642651-hue",
       "repo": "claude-help",
       "releaseType": "release"
     }

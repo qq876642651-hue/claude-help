@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dryRun = process.argv.includes('--dry-run');
-const REPO = 'ZhaoMCX/claude-help';
+const REPO = 'qq876642651-hue/claude-help';
 
 function run(cmd, args, opts = {}) {
   return execFileSync(cmd, args, { cwd: appDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], ...opts }).trim();

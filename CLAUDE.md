@@ -29,7 +29,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - `npm run dist`：打包 NSIS 安装程序到 `app/dist/`。
   - `npm run version:next`：只打印下一个版本号和分组的提交。
   - `npm run release`：正式发版。它会改版本号、提交、推送、先用 `gh` 建 Release，再用 electron-builder 上传，最后核对 exe、blockmap、latest.yml 三个文件。发版前先运行 `version:next`，让用户确认版本号。
-  - 软件靠 electron-updater 从 GitHub Releases（ZhaoMCX/claude-help）自动更新。
+  - 软件靠 electron-updater 从 GitHub Releases（qq876642651-hue/claude-help）自动更新。原仓库 ZhaoMCX/claude-help 已随账号封停失效，v0.3.1 及更早的安装需要手动装一次新版。
 
 提交和版本：
 - 提交信息写成英文前缀加中文描述：
