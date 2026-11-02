@@ -8,5 +8,4 @@ module.exports = {
   DATA_DIR,
   USAGE_FILE: path.join(DATA_DIR, 'usage.json'),
   MAIL_SITES_FILE: path.join(DATA_DIR, 'mail-sites.json'),
-  CONFIG_FILE: path.join(DATA_DIR, 'desktop-settings.json'),
 };

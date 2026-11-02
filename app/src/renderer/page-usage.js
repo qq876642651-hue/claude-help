@@ -81,7 +81,7 @@
 
   // 删除前确认；删除后提示条里可「撤销」，把原记录（含记录时间）放回
   function removeAccount(acc) {
-    UI.confirm('删除 ' + acc.email + ' 的额度记录？收信地址和配置不受影响。', '删除').then(function (ok) {
+    UI.confirm('删除 ' + acc.email + ' 的额度记录？收信地址不受影响。', '删除').then(function (ok) {
       if (!ok) return;
       api.removeUsage(acc.email).then(function (r) {
         accounts = accounts.filter(function (a) { return a.email !== r.removed.email; });

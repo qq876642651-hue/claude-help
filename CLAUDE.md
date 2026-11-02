@@ -7,16 +7,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），附带命令行工具 `claude-help`。代码都在 `app/` 下，软件和 CLI 共用同一份核心代码，版本号也相同。
 
 - `app/src/core/`：纯 Node 的核心模块，不依赖 electron。
-  - `paths.js`：数据目录 `%USERPROFILE%\.claude\claude-help\` 下的 `usage.json`、`mail-sites.json`、`desktop-settings.json`。
+  - `paths.js`：数据目录 `%USERPROFILE%\.claude\claude-help\` 下的 `usage.json`、`mail-sites.json`。
   - `usage.js`：读取和记录额度，每个账号只保留最新一条。
   - `mailSites.js`：邮箱后缀 → 收信网址。默认只有 `poczta.onet.pl → https://onet.yulishomes.com/`；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
-  - `config.js`：保存桌面端设置模板，以及和当前设置对比。
   - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。
-- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`usage remove`、`mail`、`sites`、`config save|diff|show`。用法和“给 Claude 的说明”都在 `--help` 里。
+- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`usage remove`、`mail`、`sites`。用法和“给 Claude 的说明”都在 `--help` 里。
   - 安装后由安装目录里的 `claude-help.cmd`（源文件 `app/build/claude-help.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
   - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
   - 开发时用 `npm run cli -- <参数>`。
-- 分工：额度（`get_usage`）和桌面端设置（`get_settings`/`set_setting`）只有 Claude 在桌面端会话里能读写。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到这些数据。
+- 分工：额度（`get_usage`）只有 Claude 在桌面端会话里能读。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到额度。
+- 不做桌面端设置的备份和应用：2026-11-02 做过 `config save|diff|show` 和「配置」页，后来删除了。原因是大部分设置存在本机，不跟账号走，备份意义不大。
 - `app/src/main.js`：主进程，负责监视 `usage.json`、处理收信地址的增删改、打开浏览器和数据目录、自动更新。
 - `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分三个页面：「额度」「收信地址」「关于」，`Ctrl+1/2/3` 切换。
   - `app.js`：路由。

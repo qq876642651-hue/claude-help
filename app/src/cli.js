@@ -4,38 +4,29 @@ const fs = require('fs');
 const { spawnSync } = require('child_process');
 const { readUsage, recordUsage, removeUsage } = require('./core/usage');
 const { readMailSites, addSite, removeSite, resetSites, mailUrlFor } = require('./core/mailSites');
-const { readConfig, saveConfig, diffConfig } = require('./core/config');
-const { USAGE_FILE, MAIL_SITES_FILE, CONFIG_FILE } = require('./core/paths');
+const { USAGE_FILE, MAIL_SITES_FILE } = require('./core/paths');
 const fmt = require('./core/format');
 const { version } = require('../package.json');
 
-const HELP = `claude-help ${version} — Claude 账号额度与配置工具（与 Claude Help 桌面软件共用数据）
+const HELP = `claude-help ${version} — Claude 账号额度与收信工具（与 Claude Help 桌面软件共用数据）
 
 用法：
   claude-help [usage] [--sort weekly|5h|recorded] [--json]   显示各账号额度（默认按每周剩余排序）
   claude-help usage record --email <邮箱> [--file <文件>]     记录一个账号的额度（plan JSON 从 stdin 或文件读）
-  claude-help usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址和配置）
+  claude-help usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址）
   claude-help mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
   claude-help sites                                          列出“邮箱后缀 → 收信网址”
   claude-help sites add <后缀> <网址> | remove <后缀> | reset
     匹配规则：邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀；默认只有 poczta.onet.pl
-  claude-help config save                                    保存配置模板（get_settings 结果从 stdin 读）
-  claude-help config diff                                    对比模板与当前设置（get_settings 结果从 stdin 读）
-  claude-help config show                                    显示已保存的配置模板
   claude-help --version | --help
 
-给 Claude 的说明（额度和桌面端设置只有你在 Claude 桌面端会话里能读写，本工具只负责存数据和比对）：
+给 Claude 的说明（额度只有你在 Claude 桌面端会话里能读，本工具只负责存数据）：
   记录额度：调用 mcp__ccd_session_mgmt__get_usage；plan.status 为 ok 时，把 plan 对象的 JSON
     通过 stdin 交给 claude-help usage record --email <会话上下文里的用户邮箱>。不要读 ~/.claude.json 里的邮箱。
-  保存配置：调用 mcp__ccd_settings__get_settings，把完整返回值的 JSON 通过 stdin 交给 claude-help config save；
-    覆盖已有模板前先问用户。
-  应用配置：调用 get_settings，把返回值交给 claude-help config diff；对输出 toSet 里的每一项调用一次
-    mcp__ccd_settings__set_setting（用户逐项批准），readOnlyDiffs 里的项请用户自己到 Settings → Claude Code 修改。
 
 数据文件：
   ${USAGE_FILE}
   ${MAIL_SITES_FILE}
-  ${CONFIG_FILE}
 `;
 
 class UsageError extends Error {}
@@ -180,24 +171,6 @@ function sites(args) {
   for (const s of list) console.log(`${s.domain.padEnd(20)} ${s.url}`);
 }
 
-// ---- config ----
-
-function config(sub) {
-  if (sub === 'save') {
-    const { saved, skipped } = saveConfig(readInput());
-    console.log(`已保存 ${saved.length} 项：${saved.join('、') || '无'}`);
-    if (skipped.length) console.log(`未保存（默认值或不可设置）：${skipped.join('、')}`);
-  } else if (sub === 'diff') {
-    printJson(diffConfig(readInput()));
-  } else if (sub === 'show') {
-    const c = readConfig();
-    if (!c) throw new UsageError('还没有保存过配置');
-    printJson(c);
-  } else {
-    throw new UsageError('用法：claude-help config save|diff|show');
-  }
-}
-
 function main(argv) {
   const { positional, flags } = parseArgs(argv);
   if (flags.version) return console.log(version);
@@ -212,7 +185,6 @@ function main(argv) {
   }
   if (cmd === 'mail') return mail(rest[0], flags);
   if (cmd === 'sites') return sites(rest);
-  if (cmd === 'config') return config(rest[0]);
   throw new UsageError(`未知命令 ${cmd}，运行 claude-help --help 查看用法`);
 }
 
