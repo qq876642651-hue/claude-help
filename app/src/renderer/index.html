@@ -7,43 +7,140 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="app">
-  <header>
-    <h1>Claude 额度</h1>
-    <label>排序
-      <select id="sort">
-        <option value="weekly">每周剩余</option>
-        <option value="fiveHour">5 小时剩余</option>
-        <option value="recorded">最近记录时间</option>
-      </select>
-    </label>
-  </header>
-  <div id="notice" role="status" hidden></div>
-  <div id="cards"></div>
-
-  <section id="sitesPanel" hidden>
-    <div class="panel-head">
-      <strong>收信地址</strong>
-      <span class="muted">按邮箱后缀选择点「收信」时在浏览器打开的网址</span>
+<div class="shell">
+  <nav class="nav" aria-label="页面">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">CH</span>
+      <span class="brand-name">Claude Help</span>
     </div>
-    <div id="sitesRows"></div>
-    <div class="panel-actions">
-      <button id="sitesAdd" class="btn" type="button">新增一行</button>
-      <span class="spacer"></span>
-      <span id="sitesMsg" class="muted"></span>
-      <button id="sitesCancel" class="btn" type="button">取消</button>
-      <button id="sitesSave" class="btn primary" type="button">保存</button>
-    </div>
-  </section>
+    <button class="nav-item" type="button" data-page="usage" title="额度（Ctrl+1）">
+      <span class="icon" data-icon="gauge"></span><span>额度</span>
+    </button>
+    <button class="nav-item" type="button" data-page="sites" title="收信地址（Ctrl+2）">
+      <span class="icon" data-icon="link"></span><span>收信地址</span>
+    </button>
+    <button class="nav-item" type="button" data-page="about" title="关于（Ctrl+3）">
+      <span class="icon" data-icon="info"></span><span>关于</span>
+      <i class="nav-dot" id="updateDot" hidden></i>
+    </button>
+    <div class="nav-foot">v<span id="navVersion"></span></div>
+  </nav>
 
-  <footer class="bar">
-    <span>Claude Help v<span id="version"></span></span>
-    <span id="updateStatus" class="grow"></span>
-    <button id="sitesBtn" class="btn" type="button">收信地址</button>
-    <button id="updateBtn" class="btn" type="button">检查更新</button>
-  </footer>
+  <main class="main">
+    <!-- 额度 -->
+    <section class="page" id="page-usage" hidden>
+      <header class="page-head">
+        <div class="page-title">
+          <h1>额度</h1>
+          <p class="sub" id="usageSummary"></p>
+        </div>
+        <div class="toolbar">
+          <label class="search">
+            <span class="icon" data-icon="search"></span>
+            <input id="usageSearch" type="search" placeholder="筛选邮箱" autocomplete="off" spellcheck="false">
+          </label>
+          <div class="segmented" id="usageSort" role="radiogroup" aria-label="排序">
+            <button type="button" role="radio" data-sort="weekly">每周剩余</button>
+            <button type="button" role="radio" data-sort="fiveHour">5 小时剩余</button>
+            <button type="button" role="radio" data-sort="recorded">最近记录</button>
+          </div>
+        </div>
+      </header>
+      <div class="page-body">
+        <div class="cards" id="cards"></div>
+      </div>
+    </section>
+
+    <!-- 收信地址 -->
+    <section class="page" id="page-sites" hidden>
+      <header class="page-head">
+        <div class="page-title">
+          <h1>收信地址</h1>
+          <p class="sub">点卡片上的「收信」时，按邮箱后缀在默认浏览器打开对应网址。邮箱域名等于后缀、或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。</p>
+        </div>
+        <div class="toolbar">
+          <button class="btn ghost" type="button" id="sitesReset"><span class="icon" data-icon="refresh"></span><span>恢复默认</span></button>
+        </div>
+      </header>
+      <div class="page-body narrow">
+        <form class="panel site-form" id="siteForm" novalidate>
+          <label class="field">
+            <span class="field-label">邮箱后缀</span>
+            <input id="siteDomain" placeholder="例如 poczta.onet.pl" autocomplete="off" spellcheck="false">
+            <em class="field-hint" id="siteDomainHint"></em>
+          </label>
+          <label class="field grow">
+            <span class="field-label">收信网址</span>
+            <input id="siteUrl" placeholder="https://" autocomplete="off" spellcheck="false">
+            <em class="field-hint" id="siteUrlHint"></em>
+          </label>
+          <button class="btn primary" type="submit"><span class="icon" data-icon="plus"></span><span>添加</span></button>
+        </form>
+        <div class="panel site-list" id="siteList"></div>
+      </div>
+    </section>
+
+    <!-- 关于 -->
+    <section class="page" id="page-about" hidden>
+      <header class="page-head">
+        <div class="page-title">
+          <h1>关于</h1>
+          <p class="sub">额度和配置由 Claude 在桌面端读取后交给命令行写入，本软件只负责读取和显示。</p>
+        </div>
+      </header>
+      <div class="page-body narrow">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Claude Help <span class="muted" id="aboutVersion"></span></h2>
+              <p class="sub" id="updateText">自动检查更新</p>
+            </div>
+            <button class="btn" type="button" id="updateBtn"><span class="icon" data-icon="refresh"></span><span>检查更新</span></button>
+          </div>
+          <div class="progress" id="updateProgress" hidden><span></span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>命令行 claude-help</h2>
+              <p class="sub">已随软件安装并加入 PATH，新开一个终端即可使用。</p>
+            </div>
+          </div>
+          <ul class="cmd-list" id="cmdList"></ul>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>数据位置</h2>
+              <p class="sub mono" id="dataDir"></p>
+            </div>
+            <button class="btn" type="button" id="openDataDir"><span class="icon" data-icon="folder"></span><span>打开文件夹</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 </div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<dialog class="confirm" id="confirmDialog">
+  <form method="dialog">
+    <p id="confirmText"></p>
+    <div class="confirm-actions">
+      <button class="btn" value="cancel" type="submit">取消</button>
+      <button class="btn danger" value="ok" type="submit" id="confirmOk">确定</button>
+    </div>
+  </form>
+</dialog>
+
 <script src="../core/format.js"></script>
-<script src="renderer.js"></script>
+<script src="ui.js"></script>
+<script src="page-usage.js"></script>
+<script src="page-sites.js"></script>
+<script src="page-about.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

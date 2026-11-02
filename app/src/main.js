@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { DATA_DIR } = require('./core/paths');
 const { readUsage } = require('./core/usage');
-const { readMailSites, writeMailSites, mailUrlFor } = require('./core/mailSites');
+const mailSites = require('./core/mailSites');
 
 let win = null;
 
@@ -30,13 +30,27 @@ function registerIpc() {
 
   ipcMain.handle('mail:open', async (_e, email) => {
     clipboard.writeText(String(email));
-    const url = mailUrlFor(email);
-    if (!url) return { opened: false };
+    const url = mailSites.mailUrlFor(email);
+    if (!url) return { opened: false, domain: String(email).split('@')[1] || '' };
     await shell.openExternal(url);
     return { opened: true, url };
   });
-  ipcMain.handle('mailSites:get', () => readMailSites());
-  ipcMain.handle('mailSites:set', (_e, list) => writeMailSites(list));
+  ipcMain.handle('mail:openSite', (_e, url) => {
+    if (!mailSites.isWebUrl(url)) throw new Error('只能打开 http(s) 网址');
+    return shell.openExternal(url);
+  });
+  ipcMain.handle('mailSites:get', () => mailSites.readMailSites());
+  ipcMain.handle('mailSites:add', (_e, domain, url) => mailSites.addSite(domain, url));
+  ipcMain.handle('mailSites:update', (_e, oldDomain, domain, url) => mailSites.updateSite(oldDomain, domain, url));
+  ipcMain.handle('mailSites:remove', (_e, domain) => mailSites.removeSite(domain));
+  ipcMain.handle('mailSites:reset', () => mailSites.resetSites());
+
+  ipcMain.handle('dataDir:get', () => DATA_DIR);
+  ipcMain.handle('dataDir:open', async () => {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const err = await shell.openPath(DATA_DIR);
+    if (err) throw new Error(err);
+  });
 }
 
 function setupUpdater() {
@@ -56,9 +70,9 @@ function setupUpdater() {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1200,
-    height: 860,
-    minWidth: 720,
+    width: 1100,
+    height: 760,
+    minWidth: 820,
     minHeight: 560,
     title: 'Claude Help',
     autoHideMenuBar: true,

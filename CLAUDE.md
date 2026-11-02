@@ -9,7 +9,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
 - `app/src/core/`：纯 Node 的核心模块，不依赖 electron。
   - `paths.js`：数据目录 `%USERPROFILE%\.claude\claude-help\` 下的 `usage.json`、`mail-sites.json`、`desktop-settings.json`。
   - `usage.js`：读取和记录额度，每个账号只保留最新一条。
-  - `mailSites.js`：邮箱后缀 → 收信网址，包括预置的波兰邮箱后缀表。
+  - `mailSites.js`：邮箱后缀 → 收信网址。默认只有 `poczta.onet.pl → https://onet.yulishomes.com/`；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
   - `config.js`：保存桌面端设置模板，以及和当前设置对比。
   - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。
 - `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`mail`、`sites`、`config save|diff|show`。用法和“给 Claude 的说明”都在 `--help` 里。
@@ -17,7 +17,13 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
   - 开发时用 `npm run cli -- <参数>`。
 - 分工：额度（`get_usage`）和桌面端设置（`get_settings`/`set_setting`）只有 Claude 在桌面端会话里能读写。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到这些数据。
-- `app/src/main.js` 和 `renderer/`：额度卡片会监视 `usage.json` 自动刷新。点「收信」会复制账号，再用默认浏览器打开收信网址；网址可在「收信地址」面板编辑。
+- `app/src/main.js`：主进程，负责监视 `usage.json`、处理收信地址的增删改、打开浏览器和数据目录、自动更新。
+- `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分三个页面：「额度」「收信地址」「关于」，`Ctrl+1/2/3` 切换。
+  - `app.js`：路由。
+  - `ui.js`：图标、按钮、提示条、确认框。
+  - `page-*.js`：各页面。
+  - `style.css`：设计变量，跟随系统深浅色。
+  - 「收信」先复制账号；邮箱后缀没配置网址时，跳到「收信地址」页并预填后缀。
 - 命令（在 `app/` 下运行）：
   - `npm start`：开发运行。
   - `npm run dist`：打包 NSIS 安装程序到 `app/dist/`。

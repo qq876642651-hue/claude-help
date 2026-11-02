@@ -7,8 +7,15 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   version: () => ipcRenderer.invoke('app:version'),
 
   openMail: (email) => ipcRenderer.invoke('mail:open', email),
+  openSite: (url) => ipcRenderer.invoke('mail:openSite', url),
   getMailSites: () => ipcRenderer.invoke('mailSites:get'),
-  setMailSites: (list) => ipcRenderer.invoke('mailSites:set', list),
+  addMailSite: (domain, url) => ipcRenderer.invoke('mailSites:add', domain, url),
+  updateMailSite: (oldDomain, domain, url) => ipcRenderer.invoke('mailSites:update', oldDomain, domain, url),
+  removeMailSite: (domain) => ipcRenderer.invoke('mailSites:remove', domain),
+  resetMailSites: () => ipcRenderer.invoke('mailSites:reset'),
+
+  dataDir: () => ipcRenderer.invoke('dataDir:get'),
+  openDataDir: () => ipcRenderer.invoke('dataDir:open'),
 
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
