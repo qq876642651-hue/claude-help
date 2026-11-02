@@ -1,7 +1,7 @@
 {
   "name": "claude-help",
   "productName": "Claude Help",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Claude 账号额度看板与收信工具（含 claude-help 命令行）",
   "author": "ZhaoMCX",
   "license": "UNLICENSED",
