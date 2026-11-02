@@ -6,3 +6,7 @@ desktop.ini
 # Claude Code 本地文件
 .claude/settings.local.json
 .claude/worktrees/
+
+# Electron 应用
+app/node_modules/
+app/dist/

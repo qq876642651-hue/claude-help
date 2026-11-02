@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+<title>Claude Help</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <section id="left">
+    <header>
+      <h1>Claude 额度</h1>
+      <label>排序
+        <select id="sort">
+          <option value="weekly">每周剩余</option>
+          <option value="fiveHour">5 小时剩余</option>
+          <option value="recorded">最近记录时间</option>
+        </select>
+      </label>
+    </header>
+    <div id="cards"></div>
+    <footer id="appbar">
+      <span>Claude Help v<span id="version"></span></span>
+      <span id="updateStatus"></span>
+      <button id="updateBtn" class="btn" type="button">检查更新</button>
+    </footer>
+  </section>
+  <section id="mail" hidden>
+    <div class="mail-bar">
+      <strong>收信</strong>
+      <span id="mailHint"></span>
+      <span class="spacer"></span>
+      <button id="mailReload" class="btn" type="button">刷新</button>
+      <button id="mailExternal" class="btn" type="button">在浏览器打开</button>
+      <button id="mailClose" class="btn" type="button">关闭</button>
+    </div>
+    <div id="mailHost"></div>
+  </section>
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>

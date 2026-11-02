@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 仓库说明
 
-Claude Help 是一组给 Claude Code 用的技能，采用普通文件夹形式，不是插件格式。技能名用英文，说明和产出都用中文。这里只放源码，技能还没有安装到任何地方。
+Claude Help 是一组给 Claude Code 用的技能，外加一个显示额度的桌面软件。技能是普通文件夹形式，不是插件格式；技能名用英文，说明和产出都用中文。这里只放源码，技能还没有安装到任何地方。
 
 - `skills/ch-init/`：往项目的 CLAUDE.md 写规则段，并建 `.claude/handoffs/`。规则只有一份来源，就是 `rules-template.md`。`writing-for-agents.md` 是写给 agent 看的文档时要遵守的要点。
 - `skills/ch-handoff/`：写交接文档，写完后按 ch-usage 的步骤记录一次额度。
-- `skills/ch-usage/`：记录账号额度。脚本 `record-usage.ps1` 和工具页模板 `dashboard.html` 在这里，数据只写到 `%USERPROFILE%\.claude\claude-help\`。
+- `skills/ch-usage/`：记录账号额度。脚本 `record-usage.ps1` 只写 `%USERPROFILE%\.claude\claude-help\usage.json`。
+- `app/`：Claude Help 桌面软件（Electron）。左侧额度卡片，监视 `usage.json` 自动刷新；右侧分栏用 `WebContentsView` 显示收信网站（该站禁止 iframe 内嵌）。在 `app/` 下：`npm start` 开发运行，`npm run dist` 打包 NSIS 安装程序到 `app/dist/`，`npm run release` 发布到 GitHub Releases（ZhaoMCX/claude-help，需要 `GH_TOKEN`），软件靠 electron-updater 从那里自动更新。发版前先改 `app/package.json` 的 `version`。
 - `skills/ch-config/`：保存和应用桌面端的偏好设置，所有账号共用一份配置。
 
 开发约定：

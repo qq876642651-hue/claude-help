@@ -1,0 +1,73 @@
+:root {
+  --bg: #f6f5f1; --card: #ffffff; --text: #1f1e1b; --muted: #6b6860;
+  --border: #e3e0d8; --track: #ecebe6;
+  --ok: #3f8f5f; --warn: #c58a1a; --high: #c4513b; --done: #3f7fbf;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1a18; --card: #252421; --text: #ecebe6; --muted: #a29f96;
+    --border: #3a3834; --track: #34322e;
+    --ok: #5fb07f; --warn: #d9a23a; --high: #e07059; --done: #6aa3dc;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+[hidden] { display: none !important; }
+
+#app { display: flex; height: 100vh; }
+#left { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#app.mail-open #left { flex: none; width: 380px; border-right: 1px solid var(--border); }
+#mail { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#mailHost { flex: 1; }
+
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; padding: 20px 16px 12px; }
+h1 { font-size: 22px; margin: 0; }
+label { color: var(--muted); font-size: 14px; }
+select {
+  margin-left: 6px; padding: 4px 8px; font: inherit; color: var(--text);
+  background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+}
+
+#cards {
+  flex: 1; overflow: auto; padding: 4px 16px 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-content: start;
+}
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+.card.active { border-color: var(--done); }
+.card-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.email { font-weight: 600; overflow-wrap: anywhere; }
+.plan { flex: none; font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+.recorded { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+.actions { display: flex; gap: 8px; margin-bottom: 4px; }
+.win { margin-top: 10px; }
+.win-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.win-head .pct { font-variant-numeric: tabular-nums; }
+.bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
+.bar > span { display: block; height: 100%; border-radius: 4px; }
+.reset { font-size: 12px; color: var(--muted); }
+.restored { color: var(--done); font-weight: 600; }
+.empty { color: var(--muted); padding: 32px 0; grid-column: 1 / -1; }
+code { font-family: ui-monospace, Consolas, monospace; }
+
+.btn {
+  padding: 3px 10px; font: inherit; font-size: 13px; color: var(--text);
+  background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+}
+.btn:hover { border-color: var(--muted); }
+
+#appbar {
+  display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+  border-top: 1px solid var(--border); font-size: 12px; color: var(--muted);
+}
+#updateStatus { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.mail-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-bottom: 1px solid var(--border); font-size: 14px;
+}
+#mailHint { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spacer { flex: 1; }

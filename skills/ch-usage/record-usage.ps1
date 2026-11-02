@@ -1,5 +1,5 @@
-# Records the latest plan usage for one account into %USERPROFILE%\.claude\claude-help\
-# and refreshes dashboard.html there. Keeps only the newest record per account.
+# Records the latest plan usage for one account into %USERPROFILE%\.claude\claude-help\usage.json,
+# which the Claude Help app watches. Keeps only the newest record per account.
 # Run: powershell -NoProfile -ExecutionPolicy Bypass -File record-usage.ps1 -Email <email> -PlanFile <path>
 # PlanFile holds the `plan` object returned by get_usage, as JSON. It is deleted after a successful run.
 param(
@@ -47,10 +47,8 @@ $accounts += $record
 
 $json = ConvertTo-Json -InputObject ([ordered]@{ accounts = $accounts }) -Depth 10
 [IO.File]::WriteAllText($usagePath, $json, $utf8)
-[IO.File]::WriteAllText((Join-Path $dataDir 'usage-data.js'), "window.CLAUDE_HELP_USAGE = $json;`n", $utf8)
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'dashboard.html') -Destination (Join-Path $dataDir 'dashboard.html') -Force
 
 Remove-Item -LiteralPath $PlanFile
 
 Write-Output "recorded: $Email ($($record.plan)), accounts: $($accounts.Count)"
-Write-Output "dashboard: $(Join-Path $dataDir 'dashboard.html')"
+Write-Output "data: $usagePath"

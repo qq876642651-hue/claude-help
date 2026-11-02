@@ -1,11 +1,11 @@
 ---
 name: ch-usage
-description: 记录当前 Claude 账号的套餐和额度（5 小时、每周），更新本机的额度工具页 dashboard.html。用户调用 /ch-usage、说“记录一下额度”时使用；ch-handoff 写完交接后也会按这里的步骤记录一次。其他时候不自动运行。
+description: 记录当前 Claude 账号的套餐和额度（5 小时、每周），供 Claude Help 软件显示。用户调用 /ch-usage、说“记录一下额度”时使用；ch-handoff 写完交接后也会按这里的步骤记录一次。其他时候不自动运行。
 ---
 
 # ch-usage
 
-数据和工具页都放在 `%USERPROFILE%\.claude\claude-help\`，不放进任何项目仓库。每个账号只保留最新一条记录。
+数据放在 `%USERPROFILE%\.claude\claude-help\usage.json`，不放进任何项目仓库。每个账号只保留最新一条记录。
 
 ## 步骤
 
@@ -21,12 +21,12 @@ description: 记录当前 Claude 账号的套餐和额度（5 小时、每周）
    ```
    powershell -NoProfile -ExecutionPolicy Bypass -File "<本技能目录>\record-usage.ps1" -Email "<邮箱>" -PlanFile "%USERPROFILE%\.claude\claude-help\plan-input.json"
    ```
-   脚本会用这条记录替换该账号的旧记录，更新 `usage.json` 和 `usage-data.js`，把 `dashboard.html` 复制过去，最后删掉 `plan-input.json`。
-   完成标准：脚本退出码为 0，输出 `recorded: …` 和 `dashboard: …` 两行。
+   脚本会用这条记录替换该账号的旧记录，写入 `usage.json`，最后删掉 `plan-input.json`。
+   完成标准：脚本退出码为 0，输出 `recorded: …` 和 `data: …` 两行。
 
-4. **告诉用户。** 用一两句话说明记录的账号、套餐、5 小时和每周的已用百分比，并附上工具页路径 `%USERPROFILE%\.claude\claude-help\dashboard.html`（双击即可在浏览器打开）。
-   完成标准：用户拿到这几个数字和路径。
+4. **告诉用户。** 用一两句话说明记录的账号、套餐、5 小时和每周的已用百分比，并说明 Claude Help 软件开着时会自动刷新显示。
+   完成标准：用户拿到这几个数字。
 
-## 工具页
+## 显示
 
-`dashboard.html` 的模板在本技能目录里，每次记录时复制过去，改模板后下一次记录就会生效。页面通过 `<script src="usage-data.js">` 读数据（`file://` 下不能用 `fetch`），每个账号一张卡片，显示套餐、各额度的进度条和重置倒计时，带「复制」（复制账号邮箱）和「收信」（新标签页打开 https://onet.yulishomes.com/ ，该网站禁止 iframe 内嵌）两个按钮；过了重置时间显示“已恢复”，按 0% 计算。排序可以在页面上切换：每周剩余（默认）、5 小时剩余、最近记录时间。
+`usage.json` 由仓库里的 Claude Help 软件（`app/`）读取并监视，文件一变界面就刷新。本技能只负责写数据，不负责显示。
