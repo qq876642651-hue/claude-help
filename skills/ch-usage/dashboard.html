@@ -167,14 +167,6 @@
     a.href = MAIL_URL;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.addEventListener('click', function (e) {
-      // 独立弹窗，每次复用同一个；被拦截时退回新标签页
-      var w = window.open(MAIL_URL, 'claude-help-mail', 'popup,width=1200,height=820');
-      if (!w) return;
-      e.preventDefault();
-      w.opener = null;
-      w.focus();
-    });
     return a;
   }
 
