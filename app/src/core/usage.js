@@ -11,13 +11,16 @@ function readUsage() {
 }
 
 // plan 是桌面端 get_usage 返回的 plan 对象；每个账号只保留最新一条
-function recordUsage(email, plan) {
+// accountId 是桌面端的账号 ID（用来把会话对应到邮箱），没传时沿用旧记录里的
+function recordUsage(email, plan, accountId) {
   email = String(email || '').trim();
   if (!email.includes('@')) throw new Error('需要账号邮箱');
   if (!plan || plan.status !== 'ok') throw new Error(`plan.status 是 ${plan && plan.status}，没有记录`);
 
+  const old = readUsage().accounts.find((a) => String(a.email).toLowerCase() === email.toLowerCase());
   const record = {
     email,
+    accountId: accountId || (old && old.accountId) || undefined,
     plan: String(plan.plan || ''),
     windows: (plan.windows || []).map((w) => ({
       label: String(w.label),

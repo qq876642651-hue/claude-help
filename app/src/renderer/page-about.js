@@ -7,6 +7,7 @@
     ['claude-help', '查看各账号额度'],
     ['claude-help mail <邮箱>', '复制账号并打开收信页'],
     ['claude-help sites', '查看收信地址'],
+    ['claude-help sessions', '按账号列出全部会话'],
     ['claude-help --help', '全部命令，以及给 Claude 的流程说明'],
   ];
 

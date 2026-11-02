@@ -5,8 +5,25 @@ const path = require('path');
 const { DATA_DIR } = require('./core/paths');
 const { readUsage, removeUsage, restoreUsage } = require('./core/usage');
 const mailSites = require('./core/mailSites');
+const sessions = require('./core/sessions');
 
 let win = null;
+
+// 会话按账号分组，能对上 usage.json 里 accountId 的组带上邮箱
+function sessionGroups() {
+  const accounts = readUsage().accounts;
+  return sessions.listSessions().map((g) => {
+    const acc = accounts.find((a) => a.accountId === g.accountId);
+    return { ...g, email: acc ? acc.email : null };
+  });
+}
+
+// 只认完整的会话 ID，路径由这里自己找，不用渲染进程传来的
+function exactSession(id) {
+  const hit = sessions.findSession(id);
+  if (!hit || hit.data.sessionId !== id) throw new Error('找不到这个会话，可能已经删除');
+  return hit;
+}
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
@@ -28,6 +45,21 @@ function registerIpc() {
   ipcMain.handle('usage:remove', (_e, email) => removeUsage(email));
   ipcMain.handle('usage:restore', (_e, record) => restoreUsage(record));
   ipcMain.handle('clipboard:write', (_e, text) => clipboard.writeText(String(text)));
+
+  ipcMain.handle('sessions:get', () => sessionGroups());
+  ipcMain.handle('sessions:copyResume', (_e, id) => {
+    const s = sessions.toSession(exactSession(id).data);
+    if (!s.transcript) throw new Error('这个会话的对话记录已不在');
+    clipboard.writeText(sessions.resumePrompt(s));
+    return { cwd: s.cwd };
+  });
+  // 移到回收站，不做永久删除
+  ipcMain.handle('sessions:trash', async (_e, id) => {
+    exactSession(id);
+    const { session, files } = sessions.sessionFiles(id);
+    for (const f of files) await shell.trashItem(f);
+    return { title: session.title, count: files.length };
+  });
   ipcMain.handle('app:version', () => app.getVersion());
 
   ipcMain.handle('mail:open', async (_e, email) => {

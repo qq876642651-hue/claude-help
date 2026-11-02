@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   removeUsage: (email) => ipcRenderer.invoke('usage:remove', email),
   restoreUsage: (record) => ipcRenderer.invoke('usage:restore', record),
   copy: (text) => ipcRenderer.invoke('clipboard:write', text),
+
+  getSessions: () => ipcRenderer.invoke('sessions:get'),
+  copyResume: (id) => ipcRenderer.invoke('sessions:copyResume', id),
+  trashSession: (id) => ipcRenderer.invoke('sessions:trash', id),
   version: () => ipcRenderer.invoke('app:version'),
 
   openMail: (email) => ipcRenderer.invoke('mail:open', email),

@@ -232,6 +232,30 @@ input.invalid:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
 @keyframes rowflash { 0% { background: var(--accent-soft); } 100% { background: transparent; } }
 .list-empty { padding: 24px 20px; color: var(--text-2); }
 
+/* ---------- 会话 ---------- */
+.session-group + .session-group { margin-top: 22px; }
+.session-group-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.session-group-head .muted { font-size: 13px; }
+.session-list { padding: 4px 0; }
+.project-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 16px; min-height: 44px;
+  border: 0; background: transparent; text-align: left; cursor: pointer;
+}
+.project-row:hover { background: var(--surface-2); }
+.project-row + .project-row, .session-row + .project-row { border-top: 1px solid var(--border); }
+.project-row .icon { color: var(--text-3); }
+.project-row .icon:first-child { width: 14px; height: 14px; transition: transform .15s; }
+.project-row.open .icon:first-child { transform: rotate(90deg); }
+.project-name { font-weight: 600; }
+.project-row .muted { font-size: 13px; margin-left: 4px; }
+.session-row { display: flex; align-items: center; gap: 12px; padding: 6px 12px 6px 60px; min-height: 42px; }
+.session-row + .session-row, .project-row + .session-row { border-top: 1px solid var(--border); }
+.session-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-meta { flex: none; color: var(--text-2); font-size: 13px; }
+.session-row.archived .session-title, .session-row.archived .session-meta { color: var(--text-3); }
+.session-missing { color: var(--text-3); font-size: 12px; padding: 0 6px; }
+.tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text-3); }
+
 /* ---------- 关于 ---------- */
 .progress { height: 6px; margin-top: 14px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }

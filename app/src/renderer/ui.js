@@ -20,6 +20,8 @@
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3"/><path d="M13 15h4"/>',
     inbox: '<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/>',
+    chevron: '<path d="m9 6 6 6-6 6"/>',
+    history:'<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/>',
   };
 
   function iconSvg(name) {

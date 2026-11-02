@@ -19,7 +19,10 @@
     <button class="nav-item" type="button" data-page="sites" title="收信地址（Ctrl+2）">
       <span class="icon" data-icon="link"></span><span>收信地址</span>
     </button>
-    <button class="nav-item" type="button" data-page="about" title="关于（Ctrl+3）">
+    <button class="nav-item" type="button" data-page="sessions" title="会话（Ctrl+3）">
+      <span class="icon" data-icon="history"></span><span>会话</span>
+    </button>
+    <button class="nav-item" type="button" data-page="about" title="关于（Ctrl+4）">
       <span class="icon" data-icon="info"></span><span>关于</span>
       <i class="nav-dot" id="updateDot" hidden></i>
     </button>
@@ -78,6 +81,23 @@
         </form>
         <div class="panel site-list" id="siteList"></div>
       </div>
+    </section>
+
+    <!-- 会话 -->
+    <section class="page" id="page-sessions" hidden>
+      <header class="page-head">
+        <div class="page-title">
+          <h1>会话</h1>
+          <p class="sub" id="sessionsSummary"></p>
+        </div>
+        <div class="toolbar">
+          <label class="search">
+            <span class="icon" data-icon="search"></span>
+            <input id="sessionsSearch" type="search" placeholder="筛选标题或项目" autocomplete="off" spellcheck="false">
+          </label>
+        </div>
+      </header>
+      <div class="page-body narrow" id="sessionList"></div>
     </section>
 
     <!-- 关于 -->
@@ -140,6 +160,7 @@
 <script src="ui.js"></script>
 <script src="page-usage.js"></script>
 <script src="page-sites.js"></script>
+<script src="page-sessions.js"></script>
 <script src="page-about.js"></script>
 <script src="app.js"></script>
 </body>

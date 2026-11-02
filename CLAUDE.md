@@ -8,17 +8,25 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
 
 - `app/src/core/`：纯 Node 的核心模块，不依赖 electron。
   - `paths.js`：数据目录 `%USERPROFILE%\.claude\claude-help\` 下的 `usage.json`、`mail-sites.json`。
-  - `usage.js`：读取和记录额度，每个账号只保留最新一条。
+  - `usage.js`：读取和记录额度，每个账号只保留最新一条。记录里的 `accountId` 是桌面端账号 ID，用来把会话对应到邮箱。
+  - `sessions.js`：读取桌面端的会话列表，只读这几个字段：标题、目录、时间、归档。
+    - 会话列表按账号分目录：`%LOCALAPPDATA%\Claude-Data\claude_<包ID>\claude-code-sessions\<账号ID>\<组织ID>\local_*.json`。切换账号后，桌面端只显示当前账号的会话。
+    - 完整对话不分账号：`%USERPROFILE%\.claude\projects\<cwd 编码>\<cliSessionId>.jsonl`。
+    - 这些是桌面端未公开的内部格式，可能变化，读不到就不显示。
+    - 恢复方式只做“复制续接指令”（新会话里粘贴，让 Claude 读旧记录），不改桌面端文件。
+    - 「会话」页和 `claude-help sessions` 都按“账号 → 项目 → 会话”分三层，页面上的项目可以收起，收起状态存在 localStorage。
+    - 删除只在软件里做，用 `shell.trashItem` 移到回收站。
+    - 测试时用 `CLAUDE_HELP_SESSIONS_DIR` 指向假的会话目录，用 `CLAUDE_CONFIG_DIR` 指定 `.claude` 目录。
   - `mailSites.js`：邮箱后缀 → 收信网址。默认只有 `poczta.onet.pl → https://onet.yulishomes.com/`；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
   - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。
-- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`usage remove`、`mail`、`sites`。用法和“给 Claude 的说明”都在 `--help` 里。
+- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`usage remove`、`mail`、`sites`、`sessions`、`sessions resume`。用法和“给 Claude 的说明”都在 `--help` 里。
   - 安装后由安装目录里的 `claude-help.cmd`（源文件 `app/build/claude-help.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
   - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
   - 开发时用 `npm run cli -- <参数>`。
 - 分工：额度（`get_usage`）只有 Claude 在桌面端会话里能读。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到额度。
 - 不做桌面端设置的备份和应用：2026-11-02 做过 `config save|diff|show` 和「配置」页，后来删除了。原因是大部分设置存在本机，不跟账号走，备份意义不大。
-- `app/src/main.js`：主进程，负责监视 `usage.json`、处理收信地址的增删改、打开浏览器和数据目录、自动更新。
-- `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分三个页面：「额度」「收信地址」「关于」，`Ctrl+1/2/3` 切换。
+- `app/src/main.js`：主进程，负责监视 `usage.json`、处理收信地址的增删改、会话的复制续接指令和删除、打开浏览器和数据目录、自动更新。
+- `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分四个页面：「额度」「收信地址」「会话」「关于」，`Ctrl+1/2/3/4` 切换。
   - `app.js`：路由。
   - `ui.js`：图标、按钮、提示条、确认框。
   - `page-*.js`：各页面。
