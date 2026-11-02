@@ -17,6 +17,7 @@ const HELP = `claude-help ${version} — Claude 账号额度与配置工具（�
   claude-help mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
   claude-help sites                                          列出“邮箱后缀 → 收信网址”
   claude-help sites add <后缀> <网址> | remove <后缀> | reset
+    匹配规则：邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀；默认只有 poczta.onet.pl
   claude-help config save                                    保存配置模板（get_settings 结果从 stdin 读）
   claude-help config diff                                    对比模板与当前设置（get_settings 结果从 stdin 读）
   claude-help config show                                    显示已保存的配置模板
@@ -165,10 +166,11 @@ function sites(args) {
     return;
   } else if (sub === 'reset') {
     resetSites();
-    console.log('已恢复预置的收信地址');
+    console.log('已恢复默认收信地址');
     return;
   } else throw new UsageError(`未知子命令 sites ${sub}`);
-  for (const s of list) console.log(`${s.domain.padEnd(16)} ${s.url}`);
+  if (!list.length) console.log('还没有收信地址，运行 claude-help sites add <后缀> <网址> 添加');
+  for (const s of list) console.log(`${s.domain.padEnd(20)} ${s.url}`);
 }
 
 // ---- config ----
