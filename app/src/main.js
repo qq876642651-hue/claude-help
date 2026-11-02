@@ -65,7 +65,8 @@ function setupUpdater() {
     if (!app.isPackaged) return send('update:status', { status: 'dev' });
     return autoUpdater.checkForUpdates().then(() => {}, () => {});
   });
-  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall());
+  // 静默安装（不弹安装向导、沿用原安装位置），装完自动重启
+  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall(true, true));
 }
 
 function createWindow() {
