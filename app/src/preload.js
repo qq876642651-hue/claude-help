@@ -10,9 +10,6 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   getMailSites: () => ipcRenderer.invoke('mailSites:get'),
   setMailSites: (list) => ipcRenderer.invoke('mailSites:set', list),
 
-  skillsStatus: () => ipcRenderer.invoke('skills:status'),
-  installSkills: () => ipcRenderer.invoke('skills:install'),
-
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   onUpdate: (cb) => ipcRenderer.on('update:status', (_e, info) => cb(info)),

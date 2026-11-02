@@ -2,15 +2,20 @@
   "name": "claude-help",
   "productName": "Claude Help",
   "version": "0.1.0",
-  "description": "Claude 账号额度看板与收信工具",
+  "description": "Claude 账号额度看板与收信工具（含 claude-help 命令行）",
   "author": "ZhaoMCX",
   "license": "UNLICENSED",
   "private": true,
   "main": "src/main.js",
+  "bin": {
+    "claude-help": "src/cli.js"
+  },
   "scripts": {
     "start": "electron .",
+    "cli": "node src/cli.js",
     "dist": "electron-builder --win nsis --publish never",
-    "release": "electron-builder --win nsis --publish always"
+    "version:next": "node scripts/release.mjs --dry-run",
+    "release": "node scripts/release.mjs"
   },
   "build": {
     "appId": "com.zhaomcx.claudehelp",
@@ -22,10 +27,10 @@
       "src/**/*",
       "package.json"
     ],
-    "extraResources": [
+    "extraFiles": [
       {
-        "from": "../skills",
-        "to": "skills"
+        "from": "build/claude-help.cmd",
+        "to": "claude-help.cmd"
       }
     ],
     "win": {
@@ -35,7 +40,8 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Claude Help"
+      "shortcutName": "Claude Help",
+      "include": "build/installer.nsh"
     },
     "publish": {
       "provider": "github",

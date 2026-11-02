@@ -40,48 +40,9 @@ function showNotice(text, warn) {
   noticeTimer = setTimeout(function () { notice.hidden = true; }, 6000);
 }
 
-// ---- 额度卡片 ----
+// ---- 额度卡片（显示辅助函数来自 core/format.js） ----
 
-function labelText(label) {
-  if (/5-hour/i.test(label)) return '5 小时';
-  var m = /^Weekly\s*·\s*(.+)$/i.exec(label);
-  if (m) return /all models/i.test(m[1]) ? '每周 · 全部模型' : '每周 · ' + m[1];
-  return label;
-}
-
-function isRestored(w, now) {
-  return w.resetsAt && new Date(w.resetsAt).getTime() <= now;
-}
-
-function usedNow(w, now) {
-  return isRestored(w, now) ? 0 : Number(w.percentUsed) || 0;
-}
-
-function findWindow(acc, test) {
-  for (var i = 0; i < acc.windows.length; i++) if (test(acc.windows[i].label)) return acc.windows[i];
-  return null;
-}
-
-function remaining(acc, kind, now) {
-  var w = kind === 'weekly'
-    ? findWindow(acc, function (l) { return /^Weekly.*all models/i.test(l); }) || findWindow(acc, function (l) { return /^Weekly/i.test(l); })
-    : findWindow(acc, function (l) { return /5-hour/i.test(l); });
-  return w ? 100 - usedNow(w, now) : -1;
-}
-
-function duration(ms) {
-  var min = Math.max(0, Math.floor(ms / 60000));
-  var d = Math.floor(min / 1440), h = Math.floor(min % 1440 / 60), m = min % 60;
-  if (d) return d + ' 天 ' + h + ' 小时';
-  if (h) return h + ' 小时 ' + m + ' 分';
-  return m + ' 分';
-}
-
-function ago(iso, now) {
-  var ms = now - new Date(iso).getTime();
-  if (ms < 60000) return '刚刚';
-  return duration(ms) + '前';
-}
+var fmt = window.UsageFormat;
 
 function barColor(used) {
   return used >= 80 ? 'var(--high)' : used >= 50 ? 'var(--warn)' : 'var(--ok)';
@@ -98,16 +59,12 @@ function openMail(email) {
 
 function render() {
   var now = Date.now();
-  var kind = sortSelect.value;
-  var list = accounts.slice().sort(function (a, b) {
-    if (kind === 'recorded') return new Date(b.recordedAt) - new Date(a.recordedAt);
-    return remaining(b, kind, now) - remaining(a, kind, now);
-  });
+  var list = fmt.sortAccounts(accounts, sortSelect.value, now);
 
   cards.textContent = '';
   if (!list.length) {
     var empty = el('p', 'empty');
-    empty.append('还没有记录。在 Claude Code 里运行 ', el('code', null, '/ch-usage'), ' 记录当前账号，这里会自动刷新。');
+    empty.append('还没有记录。在 Claude 桌面端里说“记录额度”，Claude 会读额度并交给 ', el('code', null, 'claude-help usage record'), '，这里会自动刷新。');
     cards.appendChild(empty);
     return;
   }
@@ -123,21 +80,21 @@ function render() {
     });
     actions.append(copyBtn, button('收信', function () { openMail(acc.email); }));
 
-    card.append(head, el('div', 'recorded', '记录于 ' + ago(acc.recordedAt, now)), actions);
+    card.append(head, el('div', 'recorded', '记录于 ' + fmt.ago(acc.recordedAt, now)), actions);
 
     acc.windows.forEach(function (w) {
-      var used = usedNow(w, now);
+      var used = fmt.usedNow(w, now);
       var box = el('div', 'win');
       var wh = el('div', 'win-head');
-      wh.append(el('span', null, labelText(w.label)), el('span', 'pct', '已用 ' + used + '%'));
+      wh.append(el('span', null, fmt.labelText(w.label)), el('span', 'pct', '已用 ' + used + '%'));
       var bar = el('div', 'bar-track');
       var fill = el('span');
       fill.style.width = Math.min(100, used) + '%';
       fill.style.background = barColor(used);
       bar.appendChild(fill);
-      var reset = isRestored(w, now)
+      var reset = fmt.isRestored(w, now)
         ? el('div', 'reset restored', '已恢复')
-        : el('div', 'reset', duration(new Date(w.resetsAt).getTime() - now) + '后重置');
+        : el('div', 'reset', fmt.duration(new Date(w.resetsAt).getTime() - now) + '后重置');
       box.append(wh, bar, reset);
       card.appendChild(box);
     });
@@ -208,37 +165,6 @@ document.getElementById('sitesSave').addEventListener('click', function () {
   }, function (e) {
     sitesMsg.textContent = String(e && e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
   });
-});
-
-// ---- 技能安装 ----
-
-var skillsStatusEl = document.getElementById('skillsStatus');
-var skillsBtn = document.getElementById('skillsBtn');
-
-function showSkills(s) {
-  skillsBtn.title = '安装到 ' + s.target + '：' + s.skills.join('、');
-  if (!s.installedVersion) {
-    skillsStatusEl.textContent = '技能未安装';
-    skillsBtn.textContent = '安装技能';
-  } else if (s.installedVersion !== s.bundledVersion) {
-    skillsStatusEl.textContent = '技能 v' + s.installedVersion + '，有新版 v' + s.bundledVersion;
-    skillsBtn.textContent = '更新技能';
-  } else {
-    skillsStatusEl.textContent = '技能 v' + s.installedVersion + ' 已是最新';
-    skillsBtn.textContent = '重新安装技能';
-  }
-}
-
-api.skillsStatus().then(showSkills);
-
-skillsBtn.addEventListener('click', function () {
-  skillsBtn.disabled = true;
-  api.installSkills().then(function (s) {
-    showSkills(s);
-    showNotice('已安装 ' + s.skills.join('、') + ' 到 ' + s.target);
-  }, function (e) {
-    showNotice('技能安装失败：' + (e && e.message ? e.message : e), true);
-  }).then(function () { skillsBtn.disabled = false; });
 });
 
 // ---- 版本与更新 ----

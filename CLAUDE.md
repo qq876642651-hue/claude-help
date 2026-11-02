@@ -4,26 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 仓库说明
 
-Claude Help 是一个显示 Claude 账号额度的桌面软件，配三个由 agent 执行的技能。技能是普通文件夹形式，不是插件格式；技能名用英文，说明和产出都用中文。技能随软件打包，在软件里点「安装技能」复制到 `%USERPROFILE%\.claude\skills\`。
+Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），附带命令行工具 `claude-help`。代码都在 `app/` 下，软件和 CLI 共用同一份核心代码，版本号也相同。
 
-- `skills/ch-usage/`：记录账号额度。脚本 `record-usage.ps1` 只写 `%USERPROFILE%\.claude\claude-help\usage.json`。
-- `skills/ch-config-save/`：记录配置。把桌面端 Code 标签页的偏好设置存成所有账号共用的模板 `desktop-settings.json`，模板格式只在这个技能里定义。
-- `skills/ch-config-apply/`：应用配置。按模板只改和当前账号不同的设置项。
-- `app/`：Claude Help 桌面软件（Electron）。
-  - 额度卡片：监视 `usage.json`，变化后自动刷新。软件自己读不到额度，记录只能在 Claude 里运行 `/ch-usage`。
-  - 收信：卡片上的「收信」先复制账号，再用系统默认浏览器打开收信网址，密码由浏览器自己记。网址按邮箱后缀配置，存在 `%USERPROFILE%\.claude\claude-help\mail-sites.json`，在软件的「收信地址」面板里编辑。文件不存在时，用 `main.js` 里预置的波兰邮箱后缀表。
-  - 技能安装：`package.json` 的 `extraResources` 把 `../skills` 打包进去。安装时只替换这几个技能自己的文件夹，并写 `skills-installed.json` 记下版本。
-  - 命令（在 `app/` 下运行）：`npm start` 开发运行；`npm run dist` 打包 NSIS 安装程序到 `app/dist/`；`npm run release` 发布到 GitHub Releases（ZhaoMCX/claude-help，需要 `GH_TOKEN`），软件靠 electron-updater 从那里自动更新。
-  - 发版步骤：
-    1. 改 `app/package.json` 的 `version`，提交并推送。
-    2. 用 `gh release create v<版本> --target main --title v<版本> --notes "..."` 先建好 Release。如果让 electron-builder 自己建，它会同时发两个创建请求，其中一个报 422，导致 `latest.yml` 漏传。
-    3. 运行 `GH_TOKEN="$(gh auth token)" npm run release`。
-    4. 用 `gh release view` 确认 exe、`.blockmap`、`latest.yml` 三个文件都在，并且 `latest.yml` 里的 size 和 exe 一致。
+- `app/src/core/`：纯 Node 的核心模块，不依赖 electron。
+  - `paths.js`：数据目录 `%USERPROFILE%\.claude\claude-help\` 下的 `usage.json`、`mail-sites.json`、`desktop-settings.json`。
+  - `usage.js`：读取和记录额度，每个账号只保留最新一条。
+  - `mailSites.js`：邮箱后缀 → 收信网址，包括预置的波兰邮箱后缀表。
+  - `config.js`：保存桌面端设置模板，以及和当前设置对比。
+  - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。
+- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`mail`、`sites`、`config save|diff|show`。用法和“给 Claude 的说明”都在 `--help` 里。
+  - 安装后由安装目录里的 `claude-help.cmd`（源文件 `app/build/claude-help.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
+  - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
+  - 开发时用 `npm run cli -- <参数>`。
+- 分工：额度（`get_usage`）和桌面端设置（`get_settings`/`set_setting`）只有 Claude 在桌面端会话里能读写。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到这些数据。
+- `app/src/main.js` 和 `renderer/`：额度卡片会监视 `usage.json` 自动刷新。点「收信」会复制账号，再用默认浏览器打开收信网址；网址可在「收信地址」面板编辑。
+- 命令（在 `app/` 下运行）：
+  - `npm start`：开发运行。
+  - `npm run dist`：打包 NSIS 安装程序到 `app/dist/`。
+  - `npm run version:next`：只打印下一个版本号和分组的提交。
+  - `npm run release`：正式发版。它会改版本号、提交、推送、先用 `gh` 建 Release，再用 electron-builder 上传，最后核对 exe、blockmap、latest.yml 三个文件。发版前先运行 `version:next`，让用户确认版本号。
+  - 软件靠 electron-updater 从 GitHub Releases（ZhaoMCX/claude-help）自动更新。
+
+提交和版本：
+- 提交信息写成英文前缀加中文描述：
+  - `break:`：不兼容的改动，升主版本。
+  - `feat:`：新功能，升次版本。
+  - `fix:`：修复，升修订号。
+  - `chore:`、`docs:` 等其他前缀：升修订号。
+- 版本号由 `app/scripts/release.mjs` 按上次 `v*` 标签以来的提交自动判断，不要手动改 `version`。
 
 开发约定：
-- 脚本用 Windows PowerShell 5.1，运行方式是 `powershell -NoProfile -ExecutionPolicy Bypass -File <脚本>`。
-  - `.ps1` 文件只写 ASCII 字符。5.1 会把不带 BOM 的脚本按 ANSI 读，中文会乱码。
-  - 写文件用不带 BOM 的 UTF-8。
 - 邮箱这类个人数据不进仓库。
-- 测试脚本或软件时，把 `$env:USERPROFILE` 和 `$env:APPDATA` 指向临时目录再运行，免得改到真实数据。
+- 测试时把 `$env:USERPROFILE` 和 `$env:APPDATA` 指向临时目录，免得改到真实数据。
   - 测试软件时还要加 `--user-data-dir=<临时目录>`。用户安装的 Claude Help 可能正在运行，单实例锁会让测试副本启动后立刻退出，并把用户的窗口切到前面。
