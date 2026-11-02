@@ -3,7 +3,7 @@ const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
 const { DATA_DIR } = require('./core/paths');
-const { readUsage } = require('./core/usage');
+const { readUsage, removeUsage, restoreUsage } = require('./core/usage');
 const mailSites = require('./core/mailSites');
 
 let win = null;
@@ -25,6 +25,8 @@ function watchUsage() {
 
 function registerIpc() {
   ipcMain.handle('usage:get', () => readUsage());
+  ipcMain.handle('usage:remove', (_e, email) => removeUsage(email));
+  ipcMain.handle('usage:restore', (_e, record) => restoreUsage(record));
   ipcMain.handle('clipboard:write', (_e, text) => clipboard.writeText(String(text)));
   ipcMain.handle('app:version', () => app.getVersion());
 

@@ -254,7 +254,13 @@ input.invalid:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
 .toast.success { border-left-color: var(--ok); } .toast.success .icon { color: var(--ok); }
 .toast.warn { border-left-color: var(--warn); } .toast.warn .icon { color: var(--warn); }
 .toast.error { border-left-color: var(--danger); } .toast.error .icon { color: var(--danger); }
-.toast-text { overflow-wrap: anywhere; }
+.toast-text { flex: 1; overflow-wrap: anywhere; }
+.toast-action {
+  flex: none; margin: -3px -4px -3px 0; padding: 3px 10px; border: 0; border-radius: 6px;
+  background: var(--accent-soft); color: var(--accent-text); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.toast-action:hover { background: var(--accent); color: var(--on-accent); }
+.card-top .btn.icon { width: 28px; height: 28px; margin: -4px -6px 0 -4px; color: var(--text-3); }
 .toast.leaving { opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; }
 @keyframes toastin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 

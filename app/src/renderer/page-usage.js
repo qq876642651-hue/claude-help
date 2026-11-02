@@ -7,7 +7,8 @@
 
   var accounts = [];
   var seen = null; // email → recordedAt，用来找出刚更新的卡片
-  var flashEmails = {};
+  var flashUntil = {}; // email → 高亮截止时间；按时间判断，中途重绘也不会丢
+  var FLASH_MS = 1800;
   var sortKey = UI.storeGet('claude-help-sort', 'weekly');
   var query = '';
   var cardsEl, summaryEl, sortEl;
@@ -78,8 +79,27 @@
     });
   }
 
+  // 删除前确认；删除后提示条里可「撤销」，把原记录（含记录时间）放回
+  function removeAccount(acc) {
+    UI.confirm('删除 ' + acc.email + ' 的额度记录？收信地址和配置不受影响。', '删除').then(function (ok) {
+      if (!ok) return;
+      api.removeUsage(acc.email).then(function (r) {
+        accounts = accounts.filter(function (a) { return a.email !== r.removed.email; });
+        render();
+        UI.toast('success', '已删除 ' + r.removed.email, { label: '撤销', onClick: function () {
+          api.restoreUsage(r.removed).then(function () {
+            flashUntil[r.removed.email] = Date.now() + FLASH_MS;
+            return api.getUsage().then(setData);
+          }, function (e) { UI.toast('error', '撤销失败：' + UI.errText(e)); });
+        } });
+      }, function (e) {
+        UI.toast('error', '删除失败：' + UI.errText(e));
+      });
+    });
+  }
+
   function card(acc, now) {
-    var c = UI.el('article', 'card' + (flashEmails[acc.email] ? ' flash' : ''));
+    var c = UI.el('article', 'card' + (flashUntil[acc.email] > now ? ' flash' : ''));
     c.dataset.email = acc.email;
 
     var top = UI.el('div', 'card-top');
@@ -100,7 +120,9 @@
     }
     who.append(email, meta);
     var st = status(acc, now);
-    top.append(UI.el('div', 'avatar', acc.email.charAt(0)), who, UI.el('span', 'chip ' + st.cls, st.text));
+    var del = UI.button({ label: '删除这个账号的记录', icon: 'trash', variant: 'icon', onClick: function () { removeAccount(acc); } });
+    del.classList.add('danger-hover');
+    top.append(UI.el('div', 'avatar', acc.email.charAt(0)), who, UI.el('span', 'chip ' + st.cls, st.text), del);
 
     var meters = UI.el('div', 'meters');
     acc.windows.forEach(function (w) { meters.appendChild(meter(w, now)); });
@@ -159,7 +181,6 @@
       return;
     }
     list.forEach(function (a) { cardsEl.appendChild(card(a, now)); });
-    flashEmails = {};
   }
 
   function setData(data) {
@@ -167,7 +188,7 @@
     var next = {};
     accounts.forEach(function (a) {
       next[a.email] = a.recordedAt;
-      if (seen && seen[a.email] !== a.recordedAt) flashEmails[a.email] = true;
+      if (seen && seen[a.email] !== a.recordedAt) flashUntil[a.email] = Date.now() + FLASH_MS;
     });
     seen = next;
     render();

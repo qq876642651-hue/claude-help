@@ -82,17 +82,25 @@
 
   var TOAST_ICONS = { success: 'check', warn: 'alert', error: 'error', info: 'info' };
 
-  function toast(type, text) {
+  // action：{ label, onClick }，在提示条右侧放一个按钮（比如「撤销」），有按钮时多停留几秒
+  function toast(type, text, action) {
     var box = document.getElementById('toasts');
     var t = el('div', 'toast ' + type);
     t.setAttribute('role', type === 'error' ? 'alert' : 'status');
     t.append(icon(TOAST_ICONS[type] || 'info'), el('span', 'toast-text', text));
-    box.appendChild(t);
-    while (box.children.length > 3) box.removeChild(box.firstChild);
-    setTimeout(function () {
+    function dismiss() {
       t.classList.add('leaving');
       setTimeout(function () { t.remove(); }, 200);
-    }, type === 'error' ? 5000 : 3000);
+    }
+    if (action) {
+      var b = el('button', 'toast-action', action.label);
+      b.type = 'button';
+      b.addEventListener('click', function () { dismiss(); action.onClick(); });
+      t.appendChild(b);
+    }
+    box.appendChild(t);
+    while (box.children.length > 3) box.removeChild(box.firstChild);
+    setTimeout(dismiss, action ? 8000 : type === 'error' ? 5000 : 3000);
   }
 
   function confirm(text, okText) {

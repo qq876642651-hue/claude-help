@@ -28,12 +28,37 @@ function recordUsage(email, plan) {
     recordedAt: new Date().toISOString(),
   };
 
-  const key = email.toLowerCase();
-  const accounts = readUsage().accounts.filter((a) => String(a.email).toLowerCase() !== key);
-  accounts.push(record);
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(USAGE_FILE, JSON.stringify({ accounts }, null, 2));
+  const accounts = putRecord(record);
   return { record, count: accounts.length };
 }
 
-module.exports = { readUsage, recordUsage };
+function writeAccounts(accounts) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(USAGE_FILE, JSON.stringify({ accounts }, null, 2));
+  return accounts;
+}
+
+// 同一邮箱（不分大小写）只留一条
+function putRecord(record) {
+  const key = String(record.email).toLowerCase();
+  const accounts = readUsage().accounts.filter((a) => String(a.email).toLowerCase() !== key);
+  accounts.push(record);
+  return writeAccounts(accounts);
+}
+
+// 只删这个账号的额度记录，返回被删的那条，供撤销时原样放回
+function removeUsage(email) {
+  const key = String(email || '').trim().toLowerCase();
+  const accounts = readUsage().accounts;
+  const removed = accounts.find((a) => String(a.email).toLowerCase() === key);
+  if (!removed) throw new Error(`没有 ${email} 的记录`);
+  const kept = writeAccounts(accounts.filter((a) => a !== removed));
+  return { removed, count: kept.length };
+}
+
+function restoreUsage(record) {
+  if (!record || !String(record.email || '').includes('@') || !Array.isArray(record.windows)) throw new Error('记录格式不对');
+  return { count: putRecord(record).length };
+}
+
+module.exports = { readUsage, recordUsage, removeUsage, restoreUsage };

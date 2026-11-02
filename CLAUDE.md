@@ -12,7 +12,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - `mailSites.js`：邮箱后缀 → 收信网址。默认只有 `poczta.onet.pl → https://onet.yulishomes.com/`；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
   - `config.js`：保存桌面端设置模板，以及和当前设置对比。
   - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。
-- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`mail`、`sites`、`config save|diff|show`。用法和“给 Claude 的说明”都在 `--help` 里。
+- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`usage remove`、`mail`、`sites`、`config save|diff|show`。用法和“给 Claude 的说明”都在 `--help` 里。
   - 安装后由安装目录里的 `claude-help.cmd`（源文件 `app/build/claude-help.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
   - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
   - 开发时用 `npm run cli -- <参数>`。

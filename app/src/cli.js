@@ -2,7 +2,7 @@
 // claude-help 命令行：安装后由 claude-help.cmd 以 ELECTRON_RUN_AS_NODE 方式运行，开发时可直接 node src/cli.js
 const fs = require('fs');
 const { spawnSync } = require('child_process');
-const { readUsage, recordUsage } = require('./core/usage');
+const { readUsage, recordUsage, removeUsage } = require('./core/usage');
 const { readMailSites, addSite, removeSite, resetSites, mailUrlFor } = require('./core/mailSites');
 const { readConfig, saveConfig, diffConfig } = require('./core/config');
 const { USAGE_FILE, MAIL_SITES_FILE, CONFIG_FILE } = require('./core/paths');
@@ -14,6 +14,7 @@ const HELP = `claude-help ${version} — Claude 账号额度与配置工具（�
 用法：
   claude-help [usage] [--sort weekly|5h|recorded] [--json]   显示各账号额度（默认按每周剩余排序）
   claude-help usage record --email <邮箱> [--file <文件>]     记录一个账号的额度（plan JSON 从 stdin 或文件读）
+  claude-help usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址和配置）
   claude-help mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
   claude-help sites                                          列出“邮箱后缀 → 收信网址”
   claude-help sites add <后缀> <网址> | remove <后缀> | reset
@@ -118,6 +119,12 @@ function usageRecord(flags) {
   console.log(`已记录 ${record.email}（${record.plan}）：${parts.join('，')}。共 ${count} 个账号。`);
 }
 
+function usageRemove(email) {
+  if (!email) throw new UsageError('用法：claude-help usage remove <邮箱>');
+  const { removed, count } = removeUsage(email);
+  console.log(`已删除 ${removed.email} 的额度记录，还剩 ${count} 个账号。`);
+}
+
 // ---- mail ----
 
 function copyToClipboard(text) {
@@ -199,6 +206,7 @@ function main(argv) {
   const [cmd, ...rest] = positional;
   if (!cmd || cmd === 'usage') {
     if (rest[0] === 'record') return usageRecord(flags);
+    if (rest[0] === 'remove') return usageRemove(rest[1]);
     if (rest[0]) throw new UsageError(`未知子命令 usage ${rest[0]}`);
     return showUsage(flags);
   }
