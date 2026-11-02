@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, clipboard, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, dialog, ipcMain, clipboard, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
@@ -6,8 +6,82 @@ const { DATA_DIR } = require('./core/paths');
 const { readUsage, removeUsage, restoreUsage } = require('./core/usage');
 const mailSites = require('./core/mailSites');
 const sessions = require('./core/sessions');
+const settings = require('./settings');
+
+const ICON = path.join(__dirname, 'assets', 'icon.png');
 
 let win = null;
+let tray = null;
+let quitting = false; // 退出过程中不再拦截关闭
+let asking = false; // 关闭弹窗正在显示
+let trayHinted = false; // 本次运行是否已提示过“仍在后台运行”
+
+function showWindow() {
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+function ensureTray() {
+  if (tray) return;
+  tray = new Tray(ICON);
+  tray.setToolTip('Claude Help');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '打开 Claude Help', click: showWindow },
+    { type: 'separator' },
+    { label: '退出', click: () => app.quit() },
+  ]));
+  tray.on('click', showWindow);
+}
+
+function hideToTray() {
+  ensureTray();
+  win.hide();
+  if (!trayHinted) {
+    trayHinted = true;
+    tray.displayBalloon({ iconType: 'info', title: 'Claude Help 仍在后台运行', content: '点托盘图标可重新打开，右键可退出。' });
+  }
+}
+
+// 返回 { action: 'tray' | 'quit' | 'cancel', remember }
+// CLAUDE_HELP_CLOSE_ANSWER 只用于测试：tray、quit、cancel，加 -remember 表示勾选“以后不再询问”
+async function askCloseAction() {
+  const preset = process.env.CLAUDE_HELP_CLOSE_ANSWER;
+  if (preset) {
+    const [action, remember] = preset.split('-');
+    return { action, remember: remember === 'remember' };
+  }
+  const { response, checkboxChecked } = await dialog.showMessageBox(win, {
+    type: 'question',
+    title: '关闭 Claude Help',
+    message: '关闭窗口后，要让 Claude Help 回到后台继续运行，还是直接退出？',
+    detail: '回到后台后，软件留在系统托盘，额度记录后照常刷新。',
+    buttons: ['回到后台', '退出', '取消'],
+    defaultId: 0,
+    cancelId: 2,
+    noLink: true,
+    checkboxLabel: '以后不再询问（可在「关于」→「设置」里改回）',
+  });
+  return { action: ['tray', 'quit', 'cancel'][response], remember: checkboxChecked };
+}
+
+async function onClose() {
+  let action = settings.get().closeAction;
+  if (action === 'ask') {
+    if (asking) return;
+    asking = true;
+    try {
+      const answer = await askCloseAction();
+      action = answer.action;
+      if (answer.remember && action !== 'cancel') send('settings:changed', settings.set('closeAction', action));
+    } finally {
+      asking = false;
+    }
+  }
+  if (action === 'tray') hideToTray();
+  else if (action === 'quit') app.quit();
+}
 
 // 会话按账号分组，能对上 usage.json 里 accountId 的组带上邮箱
 function sessionGroups() {
@@ -79,6 +153,9 @@ function registerIpc() {
   ipcMain.handle('mailSites:remove', (_e, domain) => mailSites.removeSite(domain));
   ipcMain.handle('mailSites:reset', () => mailSites.resetSites());
 
+  ipcMain.handle('settings:get', () => settings.get());
+  ipcMain.handle('settings:set', (_e, key, value) => settings.set(key, value));
+
   ipcMain.handle('dataDir:get', () => DATA_DIR);
   ipcMain.handle('dataDir:open', async () => {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -110,6 +187,7 @@ function createWindow() {
     minWidth: 820,
     minHeight: 560,
     title: 'Claude Help',
+    icon: ICON,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -124,6 +202,12 @@ function createWindow() {
   win.webContents.once('did-finish-load', () => {
     if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {});
   });
+  // 点 × 时按设置询问、回到后台或退出；退出过程中（托盘「退出」、自动更新安装）照常关闭
+  win.on('close', (e) => {
+    if (quitting) return;
+    e.preventDefault();
+    onClose().catch(() => {});
+  });
   win.on('closed', () => {
     win = null;
   });
@@ -132,10 +216,9 @@ function createWindow() {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (!win) return;
-    if (win.isMinimized()) win.restore();
-    win.focus();
+  app.on('second-instance', showWindow);
+  app.on('before-quit', () => {
+    quitting = true;
   });
   app.whenReady().then(() => {
     registerIpc();

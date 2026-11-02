@@ -123,6 +123,20 @@
         <div class="panel">
           <div class="panel-head">
             <div>
+              <h2>关闭窗口时</h2>
+              <p class="sub">回到后台后，软件留在系统托盘，额度记录后照常刷新；从托盘图标右键退出。</p>
+            </div>
+            <div class="segmented" id="closeAction" role="radiogroup" aria-label="关闭窗口时">
+              <button type="button" role="radio" data-value="ask">每次询问</button>
+              <button type="button" role="radio" data-value="tray">回到后台</button>
+              <button type="button" role="radio" data-value="quit">直接退出</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
               <h2>命令行 claude-help</h2>
               <p class="sub">已随软件安装并加入 PATH，新开一个终端即可使用。</p>
             </div>

@@ -22,7 +22,13 @@
   };
 
   var ready = false;
-  var btn, textEl, progress;
+  var btn, textEl, progress, closeEl;
+
+  function showSettings(s) {
+    [].forEach.call(closeEl.querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-checked', String(b.dataset.value === s.closeAction));
+    });
+  }
 
   function setButton(label, iconName, variant) {
     btn.className = 'btn' + (variant ? ' ' + variant : '');
@@ -53,6 +59,19 @@
     });
 
     api.version().then(function (v) { document.getElementById('aboutVersion').textContent = 'v' + v; });
+
+    // 关闭窗口时的做法；在关闭弹窗里勾了“以后不再询问”也会同步过来
+    closeEl = document.getElementById('closeAction');
+    closeEl.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-value]');
+      if (!b) return;
+      api.setSetting('closeAction', b.dataset.value).then(function (s) {
+        showSettings(s);
+        UI.toast('success', '已保存：关闭窗口时' + b.textContent);
+      }, function (err) { UI.toast('error', '保存失败：' + UI.errText(err)); });
+    });
+    api.getSettings().then(showSettings);
+    api.onSettings(showSettings);
 
     var list = document.getElementById('cmdList');
     COMMANDS.forEach(function (c) {

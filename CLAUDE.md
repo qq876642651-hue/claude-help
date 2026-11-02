@@ -26,6 +26,10 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
 - 分工：额度（`get_usage`）只有 Claude 在桌面端会话里能读。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到额度。
 - 不做桌面端设置的备份和应用：2026-11-02 做过 `config save|diff|show` 和「配置」页，后来删除了。原因是大部分设置存在本机，不跟账号走，备份意义不大。
 - `app/src/main.js`：主进程，负责监视 `usage.json`、处理收信地址的增删改、会话的复制续接指令和删除、打开浏览器和数据目录、自动更新。
+  - 点 × 时按 `closeAction`（`ask`/`tray`/`quit`，默认 `ask`）处理：询问、回到后台（系统托盘）或退出。
+  - 设置存在 `src/settings.js` 管理的 `userData\settings.json`，CLI 不用。
+  - 托盘和窗口图标用 `src/assets/icon.png`，由 `npm run icon` 生成。
+  - 测试时用 `CLAUDE_HELP_CLOSE_ANSWER`（`tray`/`quit`/`cancel`，可加 `-remember`）跳过关闭弹窗。
 - `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分四个页面：「额度」「收信地址」「会话」「关于」，`Ctrl+1/2/3/4` 切换。
   - `app.js`：路由。
   - `ui.js`：图标、按钮、提示条、确认框。
@@ -35,7 +39,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
 - 命令（在 `app/` 下运行）：
   - `npm start`：开发运行。
   - `npm run dist`：打包 NSIS 安装程序到 `app/dist/`。
-  - `npm run icon`：把 `build/icon.svg` 渲染成 `build/icon.png`（1024×1024），改了 SVG 后运行。`icon.png` 要提交，打包时 electron-builder 用它生成 exe 和安装程序的图标；侧栏标志是 `index.html` 里内联的同一个 SVG，改图标时一起改。
+  - `npm run icon`：把 `build/icon.svg` 渲染成 `build/icon.png`（1024×1024）和 `src/assets/icon.png`（256×256），改了 SVG 后运行。`icon.png` 要提交，打包时 electron-builder 用它生成 exe 和安装程序的图标；侧栏标志是 `index.html` 里内联的同一个 SVG，改图标时一起改。
   - `npm run version:next`：只打印下一个版本号和分组的提交。
   - `npm run release`：正式发版。它会改版本号、提交、推送、先用 `gh` 建 Release，再用 electron-builder 上传，最后核对 exe、blockmap、latest.yml 三个文件。发版前先运行 `version:next`，让用户确认版本号。
   - 软件靠 electron-updater 从 GitHub Releases（qq876642651-hue/claude-help）自动更新。原仓库 ZhaoMCX/claude-help 已随账号封停失效，v0.3.1 及更早的安装需要手动装一次新版。

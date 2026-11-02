@@ -47,6 +47,10 @@ The Claude desktop app stores its session list per account, so switching account
 - **Delete**: moves the session's list file, its transcript, and any subagent transcripts to the Recycle Bin. Nothing is permanently deleted, so you can restore it from there.
 - Accounts are shown by ID until you record usage once while signed in to that account; after that they're shown by email.
 
+### Running in the background
+
+Clicking the window's × asks whether to keep Claude Help running in the background (in the system tray, still refreshing when usage is recorded) or quit. Tick "don't ask again" to remember the choice; you can change it later under "关闭窗口时" (When closing the window) on the About page. While it's in the background, click the tray icon to reopen it, or right-click to quit.
+
 ### Automatic updates
 
 The app checks this repository's GitHub Releases, downloads new versions in the background, and installs them silently when you restart from the About page.
