@@ -35,7 +35,13 @@
   .card-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
   .email { font-weight: 600; overflow-wrap: anywhere; }
   .plan { flex: none; font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
-  .recorded { font-size: 12px; color: var(--muted); margin: 2px 0 12px; }
+  .recorded { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+  .actions { display: flex; gap: 8px; margin-bottom: 4px; }
+  .btn {
+    padding: 3px 10px; font: inherit; font-size: 13px; color: var(--text); text-decoration: none;
+    background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--muted); }
   .win { margin-top: 10px; }
   .win-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
   .win-head .pct { font-variant-numeric: tabular-nums; }
@@ -125,6 +131,45 @@
     return e;
   }
 
+  var MAIL_URL = 'https://onet.yulishomes.com/';
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).catch(function () { return legacyCopy(text); });
+    }
+    return legacyCopy(text);
+  }
+
+  function legacyCopy(text) {
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(area);
+    return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'));
+  }
+
+  function copyButton(text) {
+    var btn = el('button', 'btn', '复制');
+    btn.type = 'button';
+    btn.addEventListener('click', function () {
+      copyText(text).then(function () { btn.textContent = '已复制'; }, function () { btn.textContent = '复制失败'; });
+      setTimeout(function () { btn.textContent = '复制'; }, 1500);
+    });
+    return btn;
+  }
+
+  function mailLink() {
+    var a = el('a', 'btn', '收信');
+    a.href = MAIL_URL;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    return a;
+  }
+
   function render() {
     var now = Date.now();
     var kind = sortSelect.value;
@@ -145,7 +190,9 @@
       var card = el('section', 'card');
       var head = el('div', 'card-head');
       head.append(el('span', 'email', acc.email), el('span', 'plan', acc.plan || '未知套餐'));
-      card.append(head, el('div', 'recorded', '记录于 ' + ago(acc.recordedAt, now)));
+      var actions = el('div', 'actions');
+      actions.append(copyButton(acc.email), mailLink());
+      card.append(head, el('div', 'recorded', '记录于 ' + ago(acc.recordedAt, now)), actions);
 
       acc.windows.forEach(function (w) {
         var used = usedNow(w, now);
