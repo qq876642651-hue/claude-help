@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude 额度</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --text: #1f1e1b; --muted: #6b6860;
+    --border: #e3e0d8; --track: #ecebe6;
+    --ok: #3f8f5f; --warn: #c58a1a; --high: #c4513b; --done: #3f7fbf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1a18; --card: #252421; --text: #ecebe6; --muted: #a29f96;
+      --border: #3a3834; --track: #34322e;
+      --ok: #5fb07f; --warn: #d9a23a; --high: #e07059; --done: #6aa3dc;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 40px; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  h1 { font-size: 22px; margin: 0; }
+  label { color: var(--muted); font-size: 14px; }
+  select {
+    margin-left: 6px; padding: 4px 8px; font: inherit; color: var(--text);
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+  }
+  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+  .card-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .email { font-weight: 600; overflow-wrap: anywhere; }
+  .plan { flex: none; font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .recorded { font-size: 12px; color: var(--muted); margin: 2px 0 12px; }
+  .win { margin-top: 10px; }
+  .win-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+  .win-head .pct { font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
+  .bar > span { display: block; height: 100%; border-radius: 4px; }
+  .reset { font-size: 12px; color: var(--muted); }
+  .restored { color: var(--done); font-weight: 600; }
+  .empty { color: var(--muted); padding: 32px 0; }
+  code { font-family: ui-monospace, Consolas, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Claude 额度</h1>
+    <label>排序
+      <select id="sort">
+        <option value="weekly">每周剩余</option>
+        <option value="fiveHour">5 小时剩余</option>
+        <option value="recorded">最近记录时间</option>
+      </select>
+    </label>
+  </header>
+  <div id="cards"></div>
+</main>
+<script src="usage-data.js"></script>
+<script>
+  var data = window.CLAUDE_HELP_USAGE || { accounts: [] };
+  var accounts = [].concat(data.accounts || []);
+  var sortSelect = document.getElementById('sort');
+  var cards = document.getElementById('cards');
+
+  try {
+    var saved = localStorage.getItem('claude-help-sort');
+    if (saved) sortSelect.value = saved;
+  } catch (e) {}
+
+  function labelText(label) {
+    if (/5-hour/i.test(label)) return '5 小时';
+    var m = /^Weekly\s*·\s*(.+)$/i.exec(label);
+    if (m) return /all models/i.test(m[1]) ? '每周 · 全部模型' : '每周 · ' + m[1];
+    return label;
+  }
+
+  function isRestored(w, now) {
+    return w.resetsAt && new Date(w.resetsAt).getTime() <= now;
+  }
+
+  function usedNow(w, now) {
+    return isRestored(w, now) ? 0 : Number(w.percentUsed) || 0;
+  }
+
+  function findWindow(acc, test) {
+    for (var i = 0; i < acc.windows.length; i++) if (test(acc.windows[i].label)) return acc.windows[i];
+    return null;
+  }
+
+  function remaining(acc, kind, now) {
+    var w = kind === 'weekly'
+      ? findWindow(acc, function (l) { return /^Weekly.*all models/i.test(l); }) || findWindow(acc, function (l) { return /^Weekly/i.test(l); })
+      : findWindow(acc, function (l) { return /5-hour/i.test(l); });
+    return w ? 100 - usedNow(w, now) : -1;
+  }
+
+  function duration(ms) {
+    var min = Math.max(0, Math.floor(ms / 60000));
+    var d = Math.floor(min / 1440), h = Math.floor(min % 1440 / 60), m = min % 60;
+    if (d) return d + ' 天 ' + h + ' 小时';
+    if (h) return h + ' 小时 ' + m + ' 分';
+    return m + ' 分';
+  }
+
+  function ago(iso, now) {
+    var ms = now - new Date(iso).getTime();
+    if (ms < 60000) return '刚刚';
+    return duration(ms) + '前';
+  }
+
+  function barColor(used) {
+    return used >= 80 ? 'var(--high)' : used >= 50 ? 'var(--warn)' : 'var(--ok)';
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function render() {
+    var now = Date.now();
+    var kind = sortSelect.value;
+    var list = accounts.slice().sort(function (a, b) {
+      if (kind === 'recorded') return new Date(b.recordedAt) - new Date(a.recordedAt);
+      return remaining(b, kind, now) - remaining(a, kind, now);
+    });
+
+    cards.textContent = '';
+    if (!list.length) {
+      var empty = el('p', 'empty');
+      empty.append('还没有记录。在 Claude Code 里运行 ', el('code', null, '/ch-usage'), ' 记录当前账号。');
+      cards.appendChild(empty);
+      return;
+    }
+
+    list.forEach(function (acc) {
+      var card = el('section', 'card');
+      var head = el('div', 'card-head');
+      head.append(el('span', 'email', acc.email), el('span', 'plan', acc.plan || '未知套餐'));
+      card.append(head, el('div', 'recorded', '记录于 ' + ago(acc.recordedAt, now)));
+
+      acc.windows.forEach(function (w) {
+        var used = usedNow(w, now);
+        var restored = isRestored(w, now);
+        var box = el('div', 'win');
+        var wh = el('div', 'win-head');
+        wh.append(el('span', null, labelText(w.label)), el('span', 'pct', '已用 ' + used + '%'));
+        var bar = el('div', 'bar');
+        var fill = el('span');
+        fill.style.width = Math.min(100, used) + '%';
+        fill.style.background = barColor(used);
+        bar.appendChild(fill);
+        var reset = restored
+          ? el('div', 'reset restored', '已恢复')
+          : el('div', 'reset', duration(new Date(w.resetsAt).getTime() - now) + '后重置');
+        box.append(wh, bar, reset);
+        card.appendChild(box);
+      });
+
+      cards.appendChild(card);
+    });
+  }
+
+  sortSelect.addEventListener('change', function () {
+    try { localStorage.setItem('claude-help-sort', sortSelect.value); } catch (e) {}
+    render();
+  });
+
+  render();
+  setInterval(render, 30000);
+</script>
+</body>
+</html>
