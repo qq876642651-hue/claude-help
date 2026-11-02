@@ -22,6 +22,12 @@
       "src/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "../skills",
+        "to": "skills"
+      }
+    ],
     "win": {
       "target": "nsis"
     },

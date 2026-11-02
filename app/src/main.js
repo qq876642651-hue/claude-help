@@ -1,17 +1,25 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, clipboard, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, clipboard, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MAIL_URL = 'https://onet.yulishomes.com/';
 // ch-usage 技能把记录写到这里；应用只读不写
 const DATA_DIR = path.join(os.homedir(), '.claude', 'claude-help');
 const USAGE_FILE = path.join(DATA_DIR, 'usage.json');
+const MAIL_SITES_FILE = path.join(DATA_DIR, 'mail-sites.json');
+const SKILLS_TARGET = path.join(os.homedir(), '.claude', 'skills');
+const SKILLS_MANIFEST = path.join(DATA_DIR, 'skills-installed.json');
+
+// 预置：onet.yulishomes.com 支持的波兰邮箱后缀（取自该站 app.js 的 providerDomains）
+const DEFAULT_MAIL_URL = 'https://onet.yulishomes.com/';
+const DEFAULT_MAIL_DOMAINS = [
+  'onet.pl', 'op.pl', 'onet.eu', 'poczta.onet.eu', 'vp.pl', 'autograf.pl', 'buziaczek.pl', 'amorki.pl',
+  'wp.pl', 'o2.pl', 'tlen.pl', 'go2.pl',
+  'interia.pl', 'interia.eu', 'poczta.fm', 'int.pl', '2gb.pl',
+];
 
 let win = null;
-let mailView = null;
-let mailShown = false;
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
@@ -38,27 +46,95 @@ function watchUsage() {
   });
 }
 
-function toBounds(b) {
+// ---- 收信地址：邮箱后缀 → 网址，用系统默认浏览器打开 ----
+
+function isWebUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSites(list) {
+  if (!Array.isArray(list)) return null;
+  return list
+    .map((s) => ({ domain: String(s.domain || '').trim().toLowerCase().replace(/^@/, ''), url: String(s.url || '').trim() }))
+    .filter((s) => s.domain && isWebUrl(s.url));
+}
+
+function readMailSites() {
+  try {
+    const sites = normalizeSites(JSON.parse(fs.readFileSync(MAIL_SITES_FILE, 'utf8')).sites);
+    if (sites) return sites;
+  } catch {}
+  return DEFAULT_MAIL_DOMAINS.map((domain) => ({ domain, url: DEFAULT_MAIL_URL }));
+}
+
+function writeMailSites(list) {
+  const sites = normalizeSites(list);
+  if (!sites || sites.length !== list.length) throw new Error('每一行都要填后缀，网址要以 http:// 或 https:// 开头');
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(MAIL_SITES_FILE, JSON.stringify({ sites }, null, 2));
+  return sites;
+}
+
+function mailUrlFor(email) {
+  const domain = String(email).split('@')[1];
+  if (!domain) return null;
+  const site = readMailSites().find((s) => s.domain === domain.toLowerCase());
+  return site ? site.url : null;
+}
+
+// ---- 技能安装：软件自带 skills/，复制到用户级 ~/.claude/skills/ ----
+
+function skillsSource() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'skills')
+    : path.join(__dirname, '..', '..', 'skills');
+}
+
+function bundledSkills() {
+  try {
+    return fs.readdirSync(skillsSource(), { withFileTypes: true })
+      .filter((d) => d.isDirectory() && fs.existsSync(path.join(skillsSource(), d.name, 'SKILL.md')))
+      .map((d) => d.name);
+  } catch {
+    return [];
+  }
+}
+
+function skillsStatus() {
+  let installed = null;
+  try {
+    installed = JSON.parse(fs.readFileSync(SKILLS_MANIFEST, 'utf8'));
+  } catch {}
   return {
-    x: Math.round(b.x),
-    y: Math.round(b.y),
-    width: Math.max(0, Math.round(b.width)),
-    height: Math.max(0, Math.round(b.height)),
+    bundledVersion: app.getVersion(),
+    installedVersion: installed && installed.version,
+    skills: bundledSkills(),
+    target: SKILLS_TARGET,
   };
 }
 
-// 收信网站禁止 iframe 内嵌，所以用独立的 WebContentsView 叠在右侧分栏上
-function ensureMailView() {
-  if (mailView) return mailView;
-  mailView = new WebContentsView({
-    webPreferences: { partition: 'persist:mail', sandbox: true, contextIsolation: true },
-  });
-  mailView.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:/i.test(url)) shell.openExternal(url);
-    return { action: 'deny' };
-  });
-  mailView.webContents.loadURL(MAIL_URL);
-  return mailView;
+// 只替换本软件自带的那几个技能文件夹，不碰用户的其他技能
+function installSkills() {
+  const names = bundledSkills();
+  if (!names.length) throw new Error('软件里没有找到技能文件');
+  fs.mkdirSync(SKILLS_TARGET, { recursive: true });
+  for (const name of names) {
+    const dest = path.join(SKILLS_TARGET, name);
+    fs.rmSync(dest, { recursive: true, force: true });
+    fs.cpSync(path.join(skillsSource(), name), dest, { recursive: true });
+  }
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(SKILLS_MANIFEST, JSON.stringify({
+    version: app.getVersion(),
+    skills: names,
+    installedAt: new Date().toISOString(),
+  }, null, 2));
+  return skillsStatus();
 }
 
 function registerIpc() {
@@ -66,25 +142,18 @@ function registerIpc() {
   ipcMain.handle('clipboard:write', (_e, text) => clipboard.writeText(String(text)));
   ipcMain.handle('app:version', () => app.getVersion());
 
-  ipcMain.handle('mail:show', (_e, bounds) => {
-    const view = ensureMailView();
-    if (!mailShown) {
-      win.contentView.addChildView(view);
-      mailShown = true;
-    }
-    view.setBounds(toBounds(bounds));
+  ipcMain.handle('mail:open', async (_e, email) => {
+    clipboard.writeText(String(email));
+    const url = mailUrlFor(email);
+    if (!url) return { opened: false };
+    await shell.openExternal(url);
+    return { opened: true, url };
   });
-  ipcMain.on('mail:bounds', (_e, bounds) => {
-    if (mailView && mailShown) mailView.setBounds(toBounds(bounds));
-  });
-  ipcMain.handle('mail:hide', () => {
-    if (mailView && mailShown) {
-      win.contentView.removeChildView(mailView);
-      mailShown = false;
-    }
-  });
-  ipcMain.handle('mail:reload', () => mailView && mailView.webContents.reload());
-  ipcMain.handle('mail:external', () => shell.openExternal(MAIL_URL));
+  ipcMain.handle('mailSites:get', () => readMailSites());
+  ipcMain.handle('mailSites:set', (_e, list) => writeMailSites(list));
+
+  ipcMain.handle('skills:status', () => skillsStatus());
+  ipcMain.handle('skills:install', () => installSkills());
 }
 
 function setupUpdater() {
@@ -104,10 +173,10 @@ function setupUpdater() {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 900,
-    minHeight: 600,
+    width: 1200,
+    height: 860,
+    minWidth: 720,
+    minHeight: 560,
     title: 'Claude Help',
     autoHideMenuBar: true,
     webPreferences: {
@@ -125,8 +194,6 @@ function createWindow() {
   });
   win.on('closed', () => {
     win = null;
-    mailView = null;
-    mailShown = false;
   });
 }
 

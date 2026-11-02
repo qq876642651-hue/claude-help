@@ -1,20 +1,44 @@
 var api = window.claudeHelp;
 var accounts = [];
-var activeEmail = null;
 
-var appEl = document.getElementById('app');
 var sortSelect = document.getElementById('sort');
 var cards = document.getElementById('cards');
-var mailPane = document.getElementById('mail');
-var mailHost = document.getElementById('mailHost');
-var mailHint = document.getElementById('mailHint');
-var updateStatus = document.getElementById('updateStatus');
-var updateBtn = document.getElementById('updateBtn');
+var notice = document.getElementById('notice');
 
 try {
   var saved = localStorage.getItem('claude-help-sort');
   if (saved) sortSelect.value = saved;
 } catch (e) {}
+
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function button(text, onClick) {
+  var b = el('button', 'btn', text);
+  b.type = 'button';
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function flash(btn, text) {
+  var original = btn.textContent;
+  btn.textContent = text;
+  setTimeout(function () { btn.textContent = original; }, 1500);
+}
+
+var noticeTimer = null;
+
+function showNotice(text, warn) {
+  notice.textContent = text;
+  notice.className = warn ? 'warn' : '';
+  notice.hidden = false;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(function () { notice.hidden = true; }, 6000);
+}
 
 // ---- 额度卡片 ----
 
@@ -63,24 +87,13 @@ function barColor(used) {
   return used >= 80 ? 'var(--high)' : used >= 50 ? 'var(--warn)' : 'var(--ok)';
 }
 
-function el(tag, cls, text) {
-  var e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
-}
-
-function button(text, onClick) {
-  var b = el('button', 'btn', text);
-  b.type = 'button';
-  b.addEventListener('click', onClick);
-  return b;
-}
-
-function flash(btn, text) {
-  var original = btn.textContent;
-  btn.textContent = text;
-  setTimeout(function () { btn.textContent = original; }, 1500);
+function openMail(email) {
+  api.openMail(email).then(function (r) {
+    if (r.opened) showNotice('已复制 ' + email + '，已在浏览器打开收信页面');
+    else showNotice('已复制 ' + email + '；该邮箱后缀还没配置收信地址，可在底部「收信地址」里添加', true);
+  }, function () {
+    showNotice('打开浏览器失败，账号已复制', true);
+  });
 }
 
 function render() {
@@ -100,7 +113,7 @@ function render() {
   }
 
   list.forEach(function (acc) {
-    var card = el('section', 'card' + (acc.email === activeEmail ? ' active' : ''));
+    var card = el('section', 'card');
     var head = el('div', 'card-head');
     head.append(el('span', 'email', acc.email), el('span', 'plan', acc.plan || '未知套餐'));
 
@@ -117,7 +130,7 @@ function render() {
       var box = el('div', 'win');
       var wh = el('div', 'win-head');
       wh.append(el('span', null, labelText(w.label)), el('span', 'pct', '已用 ' + used + '%'));
-      var bar = el('div', 'bar');
+      var bar = el('div', 'bar-track');
       var fill = el('span');
       fill.style.width = Math.min(100, used) + '%';
       fill.style.background = barColor(used);
@@ -147,41 +160,91 @@ api.getUsage().then(setData);
 api.onUsage(setData);
 setInterval(render, 30000);
 
-// ---- 收信分栏 ----
+// ---- 收信地址设置 ----
 
-function hostBounds() {
-  var r = mailHost.getBoundingClientRect();
-  return { x: r.left, y: r.top, width: r.width, height: r.height };
+var sitesPanel = document.getElementById('sitesPanel');
+var sitesRows = document.getElementById('sitesRows');
+var sitesMsg = document.getElementById('sitesMsg');
+
+function addSiteRow(site) {
+  var row = el('div', 'site-row');
+  var domain = el('input');
+  domain.placeholder = '邮箱后缀，如 onet.pl';
+  domain.value = site ? site.domain : '';
+  domain.className = 'site-domain';
+  var url = el('input');
+  url.placeholder = 'https://…';
+  url.value = site ? site.url : '';
+  url.className = 'site-url';
+  row.append(domain, url, button('删除', function () { row.remove(); }));
+  sitesRows.appendChild(row);
+  return row;
 }
 
-function openMail(email) {
-  activeEmail = email;
-  api.copy(email);
-  mailHint.textContent = '已复制 ' + email + '，粘贴到账号框即可';
-  var wasHidden = mailPane.hidden;
-  mailPane.hidden = false;
-  appEl.classList.add('mail-open');
-  render();
-  if (wasHidden) requestAnimationFrame(function () { api.showMail(hostBounds()); });
+function openSitesPanel() {
+  sitesMsg.textContent = '';
+  api.getMailSites().then(function (sites) {
+    sitesRows.textContent = '';
+    sites.forEach(addSiteRow);
+    sitesPanel.hidden = false;
+  });
 }
 
-function closeMail() {
-  activeEmail = null;
-  mailPane.hidden = true;
-  appEl.classList.remove('mail-open');
-  api.hideMail();
-  render();
+document.getElementById('sitesBtn').addEventListener('click', function () {
+  if (sitesPanel.hidden) openSitesPanel();
+  else sitesPanel.hidden = true;
+});
+document.getElementById('sitesAdd').addEventListener('click', function () {
+  addSiteRow().querySelector('input').focus();
+});
+document.getElementById('sitesCancel').addEventListener('click', function () { sitesPanel.hidden = true; });
+document.getElementById('sitesSave').addEventListener('click', function () {
+  var list = [].map.call(sitesRows.querySelectorAll('.site-row'), function (row) {
+    return { domain: row.querySelector('.site-domain').value, url: row.querySelector('.site-url').value };
+  }).filter(function (s) { return s.domain.trim() || s.url.trim(); });
+  api.setMailSites(list).then(function (sites) {
+    sitesPanel.hidden = true;
+    showNotice('收信地址已保存，共 ' + sites.length + ' 条');
+  }, function (e) {
+    sitesMsg.textContent = String(e && e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+  });
+});
+
+// ---- 技能安装 ----
+
+var skillsStatusEl = document.getElementById('skillsStatus');
+var skillsBtn = document.getElementById('skillsBtn');
+
+function showSkills(s) {
+  skillsBtn.title = '安装到 ' + s.target + '：' + s.skills.join('、');
+  if (!s.installedVersion) {
+    skillsStatusEl.textContent = '技能未安装';
+    skillsBtn.textContent = '安装技能';
+  } else if (s.installedVersion !== s.bundledVersion) {
+    skillsStatusEl.textContent = '技能 v' + s.installedVersion + '，有新版 v' + s.bundledVersion;
+    skillsBtn.textContent = '更新技能';
+  } else {
+    skillsStatusEl.textContent = '技能 v' + s.installedVersion + ' 已是最新';
+    skillsBtn.textContent = '重新安装技能';
+  }
 }
 
-new ResizeObserver(function () {
-  if (!mailPane.hidden) api.setMailBounds(hostBounds());
-}).observe(mailHost);
+api.skillsStatus().then(showSkills);
 
-document.getElementById('mailClose').addEventListener('click', closeMail);
-document.getElementById('mailReload').addEventListener('click', function () { api.reloadMail(); });
-document.getElementById('mailExternal').addEventListener('click', function () { api.openMailExternal(); });
+skillsBtn.addEventListener('click', function () {
+  skillsBtn.disabled = true;
+  api.installSkills().then(function (s) {
+    showSkills(s);
+    showNotice('已安装 ' + s.skills.join('、') + ' 到 ' + s.target);
+  }, function (e) {
+    showNotice('技能安装失败：' + (e && e.message ? e.message : e), true);
+  }).then(function () { skillsBtn.disabled = false; });
+});
 
 // ---- 版本与更新 ----
+
+var updateStatus = document.getElementById('updateStatus');
+var updateBtn = document.getElementById('updateBtn');
 
 var updateText = {
   dev: function () { return '开发模式不检查更新'; },

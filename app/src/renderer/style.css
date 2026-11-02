@@ -17,27 +17,32 @@ body {
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
 }
 [hidden] { display: none !important; }
+.muted { color: var(--muted); font-size: 13px; }
+.spacer, .grow { flex: 1; min-width: 0; }
+.grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-#app { display: flex; height: 100vh; }
-#left { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-#app.mail-open #left { flex: none; width: 380px; border-right: 1px solid var(--border); }
-#mail { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-#mailHost { flex: 1; }
+#app { display: flex; flex-direction: column; height: 100vh; }
 
 header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; padding: 20px 16px 12px; }
 h1 { font-size: 22px; margin: 0; }
 label { color: var(--muted); font-size: 14px; }
-select {
-  margin-left: 6px; padding: 4px 8px; font: inherit; color: var(--text);
+select, input {
+  padding: 4px 8px; font: inherit; color: var(--text);
   background: var(--card); border: 1px solid var(--border); border-radius: 6px;
 }
+select { margin-left: 6px; }
+
+#notice {
+  margin: 0 16px 8px; padding: 8px 12px; font-size: 14px;
+  background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--done); border-radius: 6px;
+}
+#notice.warn { border-left-color: var(--warn); }
 
 #cards {
   flex: 1; overflow: auto; padding: 4px 16px 16px;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-content: start;
 }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
-.card.active { border-color: var(--done); }
 .card-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .email { font-weight: 600; overflow-wrap: anywhere; }
 .plan { flex: none; font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
@@ -46,8 +51,8 @@ select {
 .win { margin-top: 10px; }
 .win-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .win-head .pct { font-variant-numeric: tabular-nums; }
-.bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
-.bar > span { display: block; height: 100%; border-radius: 4px; }
+.bar-track { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
+.bar-track > span { display: block; height: 100%; border-radius: 4px; }
 .reset { font-size: 12px; color: var(--muted); }
 .restored { color: var(--done); font-weight: 600; }
 .empty { color: var(--muted); padding: 32px 0; grid-column: 1 / -1; }
@@ -58,16 +63,19 @@ code { font-family: ui-monospace, Consolas, monospace; }
   background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
 }
 .btn:hover { border-color: var(--muted); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { border-color: var(--done); color: var(--done); }
 
-#appbar {
+#sitesPanel {
+  max-height: 45vh; overflow: auto; margin: 0 16px 12px; padding: 12px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+}
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.site-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(200px, 2.5fr) auto; gap: 8px; margin-bottom: 6px; }
+.site-row input { min-width: 0; font-size: 14px; }
+.panel-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+.bar {
   display: flex; align-items: center; gap: 10px; padding: 8px 16px;
   border-top: 1px solid var(--border); font-size: 12px; color: var(--muted);
 }
-#updateStatus { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.mail-bar {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-  border-bottom: 1px solid var(--border); font-size: 14px;
-}
-#mailHint { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.spacer { flex: 1; }

@@ -1,6 +1,6 @@
 ---
 name: ch-usage
-description: 记录当前 Claude 账号的套餐和额度（5 小时、每周），供 Claude Help 软件显示。用户调用 /ch-usage、说“记录一下额度”时使用；ch-handoff 写完交接后也会按这里的步骤记录一次。其他时候不自动运行。
+description: 记录当前 Claude 账号的套餐和额度（5 小时、每周），供 Claude Help 软件显示。用户调用 /ch-usage、说“记录一下额度”时使用。其他时候不自动运行。
 ---
 
 # ch-usage

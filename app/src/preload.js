@@ -6,11 +6,12 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   copy: (text) => ipcRenderer.invoke('clipboard:write', text),
   version: () => ipcRenderer.invoke('app:version'),
 
-  showMail: (bounds) => ipcRenderer.invoke('mail:show', bounds),
-  setMailBounds: (bounds) => ipcRenderer.send('mail:bounds', bounds),
-  hideMail: () => ipcRenderer.invoke('mail:hide'),
-  reloadMail: () => ipcRenderer.invoke('mail:reload'),
-  openMailExternal: () => ipcRenderer.invoke('mail:external'),
+  openMail: (email) => ipcRenderer.invoke('mail:open', email),
+  getMailSites: () => ipcRenderer.invoke('mailSites:get'),
+  setMailSites: (list) => ipcRenderer.invoke('mailSites:set', list),
+
+  skillsStatus: () => ipcRenderer.invoke('skills:status'),
+  installSkills: () => ipcRenderer.invoke('skills:install'),
 
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
