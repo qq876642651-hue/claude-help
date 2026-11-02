@@ -160,6 +160,28 @@
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
+<!-- 安装更新时盖住整个窗口，界面同时设为 inert -->
+<div class="install-overlay" id="installOverlay" hidden>
+  <div class="install-card" role="alertdialog" aria-labelledby="installTitle" aria-describedby="installText">
+    <span class="spinner" aria-hidden="true"></span>
+    <h2 id="installTitle">正在安装更新</h2>
+    <p class="sub" id="installText">软件会自动退出，安装完成后自动重新打开。</p>
+  </div>
+</div>
+
+<dialog class="confirm close-dialog" id="closeDialog">
+  <form method="dialog">
+    <h2>关闭 Claude Help</h2>
+    <p class="sub">回到后台后，软件留在系统托盘，额度记录后照常刷新。</p>
+    <label class="check"><input type="checkbox" id="closeRemember"><span>以后不再询问（可在「关于」里改回）</span></label>
+    <div class="confirm-actions">
+      <button class="btn ghost" value="cancel" type="submit">取消</button>
+      <button class="btn" value="quit" type="submit">退出</button>
+      <button class="btn primary" value="tray" type="submit" autofocus>回到后台</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog class="confirm" id="confirmDialog">
   <form method="dialog">
     <p id="confirmText"></p>

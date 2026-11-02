@@ -44,7 +44,12 @@ function hideToTray() {
   }
 }
 
+const ACTIONS = ['tray', 'quit', 'cancel'];
+let closeRequestId = 0;
+
 // 返回 { action: 'tray' | 'quit' | 'cancel', remember }
+// 先用页面里的对话框问：页面显示后先回 { id, shown: true }，选完再回 { id, action, remember }
+// 页面 5 秒内没确认显示（没加载完或卡住）就改用原生弹窗；显示之后等多久都行
 // CLAUDE_HELP_CLOSE_ANSWER 只用于测试：tray、quit、cancel，加 -remember 表示勾选“以后不再询问”
 async function askCloseAction() {
   const preset = process.env.CLAUDE_HELP_CLOSE_ANSWER;
@@ -52,6 +57,28 @@ async function askCloseAction() {
     const [action, remember] = preset.split('-');
     return { action, remember: remember === 'remember' };
   }
+  if (win.isMinimized()) win.restore();
+  const id = ++closeRequestId;
+  const answer = await new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      ipcMain.removeListener('app:closeAnswer', onAnswer);
+      resolve(null);
+    }, 5000);
+    function onAnswer(_e, a) {
+      if (!a || a.id !== id) return;
+      clearTimeout(timer);
+      if (a.shown) return;
+      ipcMain.removeListener('app:closeAnswer', onAnswer);
+      resolve(a);
+    }
+    ipcMain.on('app:closeAnswer', onAnswer);
+    send('app:closeRequest', { id });
+  });
+  if (!answer) return nativeAsk();
+  return { action: ACTIONS.includes(answer.action) ? answer.action : 'cancel', remember: Boolean(answer.remember) };
+}
+
+async function nativeAsk() {
   const { response, checkboxChecked } = await dialog.showMessageBox(win, {
     type: 'question',
     title: '关闭 Claude Help',
@@ -63,7 +90,7 @@ async function askCloseAction() {
     noLink: true,
     checkboxLabel: '以后不再询问（可在「关于」→「设置」里改回）',
   });
-  return { action: ['tray', 'quit', 'cancel'][response], remember: checkboxChecked };
+  return { action: ACTIONS[response], remember: checkboxChecked };
 }
 
 async function onClose() {
@@ -176,8 +203,12 @@ function setupUpdater() {
     if (!app.isPackaged) return send('update:status', { status: 'dev' });
     return autoUpdater.checkForUpdates().then(() => {}, () => {});
   });
-  // 静默安装（不弹安装向导、沿用原安装位置），装完自动重启
-  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall(true, true));
+  // 静默安装（不弹安装向导、沿用原安装位置），装完自动重启；安装期间关闭窗口不再询问
+  ipcMain.handle('update:install', () => {
+    if (!app.isPackaged) throw new Error('开发模式不能安装更新');
+    quitting = true;
+    autoUpdater.quitAndInstall(true, true);
+  });
 }
 
 function createWindow() {

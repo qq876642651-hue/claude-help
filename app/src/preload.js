@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),
   onSettings: (cb) => ipcRenderer.on('settings:changed', (_e, data) => cb(data)),
+  onCloseRequest: (cb) => ipcRenderer.on('app:closeRequest', (_e, req) => cb(req)),
+  answerClose: (answer) => ipcRenderer.send('app:closeAnswer', answer),
 
   dataDir: () => ipcRenderer.invoke('dataDir:get'),
   openDataDir: () => ipcRenderer.invoke('dataDir:open'),

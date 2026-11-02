@@ -27,6 +27,8 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
 - 不做桌面端设置的备份和应用：2026-11-02 做过 `config save|diff|show` 和「配置」页，后来删除了。原因是大部分设置存在本机，不跟账号走，备份意义不大。
 - `app/src/main.js`：主进程，负责监视 `usage.json`、处理收信地址的增删改、会话的复制续接指令和删除、打开浏览器和数据目录、自动更新。
   - 点 × 时按 `closeAction`（`ask`/`tray`/`quit`，默认 `ask`）处理：询问、回到后台（系统托盘）或退出。
+    - 询问用页面里的 `#closeDialog`：页面先回“已显示”，再回选择。5 秒内没回“已显示”时，改用原生弹窗兜底。
+  - 点「重启并安装」后，`.shell` 和提示条设为 `inert` 并盖上遮罩，快捷键也不响应；安装出错时解锁。开发模式下不安装，直接报错。
   - 设置存在 `src/settings.js` 管理的 `userData\settings.json`，CLI 不用。
   - 托盘和窗口图标用 `src/assets/icon.png`，由 `npm run icon` 生成。
   - 测试时用 `CLAUDE_HELP_CLOSE_ANSWER`（`tray`/`quit`/`cancel`，可加 `-remember`）跳过关闭弹窗。

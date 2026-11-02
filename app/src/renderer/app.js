@@ -33,6 +33,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (!e.ctrlKey || e.altKey || e.shiftKey) return;
+    if (document.querySelector('.shell').inert) return; // 安装更新时界面锁定
     var n = Number(e.key);
     if (n >= 1 && n <= ORDER.length) {
       e.preventDefault();
@@ -50,6 +51,15 @@
     window.AboutPage.update(info);
     dot.hidden = !(info.status === 'available' || info.status === 'downloading' || info.status === 'downloaded');
     if (info.status === 'downloaded') UI.toast('info', '新版本 v' + info.version + ' 已下载，可在「关于」里重启安装');
+  });
+
+  // 主进程在点 × 时来问：回到后台、退出还是取消
+  api.onCloseRequest(function (req) {
+    var asked = UI.askClose();
+    api.answerClose({ id: req.id, shown: true });
+    asked.then(function (a) {
+      api.answerClose({ id: req.id, action: a.action, remember: a.remember });
+    });
   });
 
   window.App = { go: go };

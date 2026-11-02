@@ -116,6 +116,21 @@
     });
   }
 
+  // 点 × 时的询问：返回 { action: 'tray' | 'quit' | 'cancel', remember }；Esc 算取消
+  function askClose() {
+    var dialog = document.getElementById('closeDialog');
+    var remember = document.getElementById('closeRemember');
+    remember.checked = false;
+    dialog.returnValue = '';
+    if (!dialog.open) dialog.showModal();
+    return new Promise(function (resolve) {
+      dialog.addEventListener('close', function () {
+        var action = dialog.returnValue || 'cancel';
+        resolve({ action: action, remember: action !== 'cancel' && remember.checked });
+      }, { once: true });
+    });
+  }
+
   // 主进程抛出的错误带着 “Error invoking remote method …” 前缀，只留真正的原因
   function errText(e) {
     return String((e && e.message) || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
@@ -137,6 +152,7 @@
     flashButton: flashButton,
     toast: toast,
     confirm: confirm,
+    askClose: askClose,
     errText: errText,
     storeGet: storeGet,
     storeSet: storeSet,

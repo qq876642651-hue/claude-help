@@ -292,6 +292,23 @@ input.invalid:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
 }
 .confirm::backdrop { background: rgba(20, 16, 10, .35); }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.close-dialog { width: 420px; }
+.close-dialog h2 { margin-bottom: 2px; }
+.check { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+
+.install-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(20, 16, 10, .35); }
+.install-overlay[hidden] { display: none; }
+.install-card {
+  width: 340px; padding: 28px 24px; text-align: center; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop);
+}
+.install-card h2 { margin-bottom: 2px; }
+.spinner {
+  display: inline-block; width: 28px; height: 28px; margin-bottom: 12px; border-radius: 50%;
+  border: 3px solid var(--track); border-top-color: var(--accent); animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

@@ -22,7 +22,25 @@
   };
 
   var ready = false;
+  var readyVersion = '';
+  var locked = false;
   var btn, textEl, progress, closeEl;
+
+  // 安装更新期间整个界面不可操作：主体和提示条设为 inert，盖上遮罩
+  function lockForInstall(version) {
+    locked = true;
+    document.querySelector('.shell').inert = true;
+    document.getElementById('toasts').inert = true;
+    document.getElementById('installTitle').textContent = '正在安装更新 v' + version;
+    document.getElementById('installOverlay').hidden = false;
+  }
+
+  function unlock() {
+    locked = false;
+    document.querySelector('.shell').inert = false;
+    document.getElementById('toasts').inert = false;
+    document.getElementById('installOverlay').hidden = true;
+  }
 
   function showSettings(s) {
     [].forEach.call(closeEl.querySelectorAll('button'), function (b) {
@@ -43,6 +61,8 @@
     progress.hidden = info.status !== 'downloading';
     if (info.status === 'downloading') progress.firstElementChild.style.width = info.percent + '%';
     ready = info.status === 'downloaded';
+    if (ready) readyVersion = info.version;
+    if (info.status === 'error' && locked) unlock();
     btn.disabled = info.status === 'checking' || info.status === 'downloading';
     if (ready) setButton('重启并安装', 'refresh', 'primary');
     else setButton('检查更新', 'refresh');
@@ -54,8 +74,12 @@
     progress = document.getElementById('updateProgress');
 
     btn.addEventListener('click', function () {
-      if (ready) api.installUpdate();
-      else api.checkUpdate();
+      if (!ready) return api.checkUpdate();
+      lockForInstall(readyVersion);
+      api.installUpdate().catch(function (e) {
+        unlock();
+        UI.toast('error', '安装失败：' + UI.errText(e));
+      });
     });
 
     api.version().then(function (v) { document.getElementById('aboutVersion').textContent = 'v' + v; });
@@ -89,5 +113,5 @@
     });
   }
 
-  window.AboutPage = { init: init, show: function () {}, update: update };
+  window.AboutPage = { init: init, show: function () {}, update: update, lockForInstall: lockForInstall, unlock: unlock };
 })();
