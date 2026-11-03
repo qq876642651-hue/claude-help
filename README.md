@@ -78,7 +78,7 @@ Claude 会读取当前账号的额度和会话 ID，交给 `cchelp usage record`
 | 命令 | 作用 |
 |---|---|
 | `cchelp` | 显示各账号额度，默认按每周剩余排序；`--sort weekly\|5h\|recorded`，`--json` |
-| `cchelp usage record --email <邮箱> [--session <会话ID>] [--file <文件>]` | 记录一个账号的额度（plan JSON 从 stdin 或文件读入），一般由 Claude 调用 |
+| `cchelp usage record --session <会话ID> [--email <邮箱>] [--reassign] [--file <文件>]` | 记录当前账号的额度（plan JSON 从 stdin 或文件读入），一般由 Claude 调用。邮箱按会话的账号 ID 找，第一次记录这个号时才要 `--email`；`--email` 和账号 ID 对不上时不写入，确认后加 `--reassign` |
 | `cchelp usage remove <邮箱>` | 删除一个账号的额度记录 |
 | `cchelp mail <邮箱> [--print]` | 复制账号并用默认浏览器打开收信网址；`--print` 只打印网址 |
 | `cchelp sites` | 列出收信地址 |

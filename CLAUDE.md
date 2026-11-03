@@ -11,6 +11,8 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - `usage.js`：读取和记录额度，每个账号只保留最新一条。记录里的 `accountId` 是桌面端账号 ID，用来把会话对应到邮箱。
     - 可以手动添加账号（`addAccount`），额度为空：`windows` 为空、`recordedAt` 为 null（用 `format.js` 的 `hasUsage` 判断）。以后记录额度时整条覆盖。
     - `setAccountId` 给手动添加的账号补上 `accountId`（见下面「收信」）。
+    - 一个 `accountId` 只对应一个邮箱，写入时会去掉其他记录上的同一 ID。
+    - `usage record` 的邮箱以 `--session` 查到的账号 ID 为准：会话上下文里的邮箱来自 `~/.claude.json`，桌面端切换账号后不会更新。ID 已记过就不用 `--email`；`--email` 和 ID 对不上（ID 记在别的邮箱上，或这个邮箱记着别的 ID）时报错不写入，`--reassign` 强制改记。
   - `sessions.js`：读取桌面端的会话列表，只读这几个字段：标题、目录、时间、归档。
     - 会话列表按账号分目录：`%LOCALAPPDATA%\Claude-Data\claude_<包ID>\claude-code-sessions\<账号ID>\<组织ID>\local_*.json`。切换账号后，桌面端只显示当前账号的会话。
     - 完整对话不分账号：`%USERPROFILE%\.claude\projects\<cwd 编码>\<cliSessionId>.jsonl`。

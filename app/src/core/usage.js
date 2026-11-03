@@ -41,12 +41,25 @@ function writeAccounts(accounts) {
   return accounts;
 }
 
-// 同一邮箱（不分大小写）只留一条
+// 同一邮箱（不分大小写）只留一条；一个账号 ID 只对应一个邮箱，别的记录上的同一 ID 去掉
 function putRecord(record) {
   const key = String(record.email).toLowerCase();
   const accounts = readUsage().accounts.filter((a) => String(a.email).toLowerCase() !== key);
+  if (record.accountId) {
+    for (const a of accounts) if (a.accountId === record.accountId) delete a.accountId;
+  }
   accounts.push(record);
   return writeAccounts(accounts);
+}
+
+function findByEmail(email) {
+  const key = String(email || '').trim().toLowerCase();
+  return readUsage().accounts.find((a) => String(a.email).toLowerCase() === key) || null;
+}
+
+function findByAccountId(accountId) {
+  if (!accountId) return null;
+  return readUsage().accounts.find((a) => a.accountId === accountId) || null;
 }
 
 // 只删这个账号的额度记录，返回被删的那条，供撤销时原样放回
@@ -92,4 +105,4 @@ function restoreUsage(record) {
   return { count: putRecord(record).length };
 }
 
-module.exports = { readUsage, recordUsage, addAccount, removeUsage, restoreUsage, setAccountId };
+module.exports = { readUsage, recordUsage, addAccount, removeUsage, restoreUsage, setAccountId, findByEmail, findByAccountId };

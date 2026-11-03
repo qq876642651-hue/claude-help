@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { readUsage, recordUsage, addAccount, removeUsage } = require('./core/usage');
+const { readUsage, recordUsage, addAccount, removeUsage, findByEmail, findByAccountId } = require('./core/usage');
 const { readMailSites, addSite, removeSite, resetSites, mailUrlFor } = require('./core/mailSites');
 const { listSessions, findSession, toSession, accountOfSession, resumePrompt } = require('./core/sessions');
 const { USAGE_FILE, MAIL_SITES_FILE } = require('./core/paths');
@@ -14,9 +14,10 @@ const HELP = `cchelp ${version} — Claude 账号额度与收信工具（与 Cla
 
 用法：
   cchelp [usage] [--sort weekly|5h|recorded] [--json]   显示各账号额度（默认按每周剩余排序）
-  cchelp usage record --email <邮箱> [--session <会话ID>] [--file <文件>]
+  cchelp usage record --session <会话ID> [--email <邮箱>] [--reassign] [--file <文件>]
                                                         记录一个账号的额度（plan JSON 从 stdin 或文件读）；
-                                                        --session 用来找出桌面端账号 ID，把会话对应到邮箱
+                                                        --session 找出桌面端账号 ID，记过的账号不用 --email；
+                                                        --email 和账号 ID 对不上时不写入，确认后加 --reassign 改记
   cchelp usage add <邮箱>                               添加一个账号，额度先空着，以后记录额度时补上
   cchelp usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址）
   cchelp mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
@@ -30,8 +31,9 @@ const HELP = `cchelp ${version} — Claude 账号额度与收信工具（与 Cla
 给 Claude 的说明（额度只有你在 Claude 桌面端会话里能读，本工具只负责存数据）：
   记录额度：调用 mcp__ccd_session_mgmt__get_usage；plan.status 为 ok 时，再调用
     mcp__ccd_session_mgmt__get_session（session_id 填 "self"），把 plan 对象的 JSON 通过 stdin 交给
-    cchelp usage record --email <会话上下文里的用户邮箱> --session <get_session 返回的 sessionId>。
-    不要读 ~/.claude.json 里的邮箱。
+    cchelp usage record --session <get_session 返回的 sessionId>（先不带 --email）。
+    提示“还没对应过邮箱”时，问用户当前登录的是哪个邮箱，再加 --email <邮箱> 重新运行。
+    不要用会话上下文或 ~/.claude.json 里的邮箱：桌面端切换账号后它们不会更新，会记到别的号上。
 
 数据文件：
   ${USAGE_FILE}
@@ -116,15 +118,34 @@ function showUsage(flags) {
   }
 }
 
+// 邮箱以会话的账号 ID 为准：会话上下文里的邮箱在桌面端切换账号后不会更新，传进来的 --email 可能是别的号
 function usageRecord(flags) {
-  if (!flags.email || flags.email === true) throw new UsageError('需要 --email <邮箱>');
+  let email = typeof flags.email === 'string' ? flags.email.trim() : '';
+  const session = typeof flags.session === 'string' ? flags.session : '';
+  if (!email && !session) throw new UsageError('需要 --session <会话ID>（或 --email <邮箱>）');
   const plan = readInput(flags.file);
   let accountId = null;
-  if (flags.session && flags.session !== true) {
-    accountId = accountOfSession(flags.session);
-    if (!accountId) console.log(`没找到会话 ${flags.session}，这次不更新账号 ID，照常记录额度。`);
+  if (session) {
+    accountId = accountOfSession(session);
+    if (!accountId) console.log(`没找到会话 ${session}，这次不更新账号 ID。`);
   }
-  const { record, count } = recordUsage(flags.email, plan, accountId);
+  const known = findByAccountId(accountId);
+  if (!email) {
+    if (!accountId) throw new UsageError('认不出会话的账号，需要 --email <邮箱>');
+    if (!known) {
+      throw new UsageError(`桌面端账号 ${accountId} 还没对应过邮箱，没有写入。问用户当前登录的是哪个邮箱，再加 --email <邮箱> 重新运行。`);
+    }
+    email = known.email;
+  } else if (accountId && !flags.reassign) {
+    const target = findByEmail(email);
+    if (known && known.email.toLowerCase() !== email.toLowerCase()) {
+      throw new UsageError(`桌面端账号 ${accountId} 记的是 ${known.email}，和 --email ${email} 不一致，没有写入。不带 --email 运行会记到 ${known.email}；用户确认是 ${email} 时加 --reassign。`);
+    }
+    if (target && target.accountId && target.accountId !== accountId) {
+      throw new UsageError(`${email} 记的是另一个桌面端账号（${target.accountId}），当前会话是 ${accountId}，没有写入。问用户当前登录的是哪个邮箱；确认是 ${email} 时加 --reassign。`);
+    }
+  }
+  const { record, count } = recordUsage(email, plan, accountId);
   const parts = record.windows.map((w) => `${fmt.labelText(w.label)} 已用 ${w.percentUsed}%`);
   console.log(`已记录 ${record.email}（${record.plan}）：${parts.join('，')}。共 ${count} 个账号。`);
 }

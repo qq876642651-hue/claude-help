@@ -80,7 +80,7 @@ Record once in each account while it's signed in.
 | Command | What it does |
 |---|---|
 | `cchelp` | Show usage for each account, sorted by weekly remaining by default; `--sort weekly\|5h\|recorded`, `--json` |
-| `cchelp usage record --email <email> [--session <session ID>] [--file <file>]` | Record one account's usage (plan JSON from stdin or a file); normally run by Claude |
+| `cchelp usage record --session <session ID> [--email <email>] [--reassign] [--file <file>]` | Record the current account's usage (plan JSON from stdin or a file); normally run by Claude. The email is looked up from the session's account ID, so `--email` is only needed the first time for an account; if `--email` doesn't match the account ID nothing is written, add `--reassign` once confirmed |
 | `cchelp usage remove <email>` | Delete one account's usage record |
 | `cchelp mail <email> [--print]` | Copy the address and open its webmail URL in the default browser; `--print` only prints the URL |
 | `cchelp sites` | List webmail addresses |
