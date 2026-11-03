@@ -76,9 +76,20 @@ function addAccount(email) {
   return { record, count: putRecord(record).length };
 }
 
+// 给记录补上桌面端账号 ID（手动添加的账号没有），原地改，不动顺序和其他字段
+function setAccountId(email, accountId) {
+  const key = String(email || '').trim().toLowerCase();
+  const accounts = readUsage().accounts;
+  const record = accounts.find((a) => String(a.email).toLowerCase() === key);
+  if (!record) throw new Error(`没有 ${email} 的记录`);
+  record.accountId = String(accountId);
+  writeAccounts(accounts);
+  return { record };
+}
+
 function restoreUsage(record) {
   if (!record || !String(record.email || '').includes('@') || !Array.isArray(record.windows)) throw new Error('记录格式不对');
   return { count: putRecord(record).length };
 }
 
-module.exports = { readUsage, recordUsage, addAccount, removeUsage, restoreUsage };
+module.exports = { readUsage, recordUsage, addAccount, removeUsage, restoreUsage, setAccountId };

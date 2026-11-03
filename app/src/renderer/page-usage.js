@@ -14,6 +14,7 @@
   var query = '';
   var cardsEl, summaryEl, sortEl;
   var addDialog, addInput, addHint;
+  var mailBusy = null; // 正在收信的邮箱
 
   function isWeekly(label) { return /^Weekly/i.test(label); }
   function isFiveHour(label) { return /5-hour/i.test(label); }
@@ -68,16 +69,48 @@
     return box;
   }
 
-  function openMail(acc, btn) {
-    api.openMail(acc.email).then(function (r) {
+  // 收信进行中（可能要操作桌面端十几秒）：所有收信按钮禁用，正在处理的那张显示“处理中…”；中途重绘也保持
+  function setMailBusy(email) {
+    mailBusy = email;
+    [].forEach.call(cardsEl.querySelectorAll('button[data-mail]'), function (b) { markMailButton(b, b.dataset.mail); });
+  }
+
+  function markMailButton(b, email) {
+    b.disabled = Boolean(mailBusy);
+    b.querySelector('.btn-label').textContent = mailBusy === email ? t('usage.mailWorking') : t('usage.mail');
+  }
+
+  function mailButtonOf(email) {
+    return [].filter.call(cardsEl.querySelectorAll('button[data-mail]'), function (b) { return b.dataset.mail === email; })[0];
+  }
+
+  // mode 不传时由主进程判断桌面端是不是这个号；认不出时问一次，再带上 switch / mailOnly 重来
+  function openMail(acc, mode) {
+    setMailBusy(acc.email);
+    api.openMail(acc.email, mode).then(function (r) {
+      setMailBusy(null);
+      if (r.needConfirm) {
+        UI.confirm(t('usage.switchConfirm', { email: acc.email }), t('usage.switchOk')).then(function (ok) {
+          openMail(acc, ok ? 'switch' : 'mailOnly');
+        });
+        return;
+      }
+      var login = r.login;
+      if (login && !login.ok) {
+        UI.toast('warn', t('usage.loginFailed', { email: acc.email, step: t('usage.step.' + login.step) }));
+      } else if (login && login.action === 'filled') {
+        UI.toast('success', t('usage.loginFilled', { email: acc.email }));
+      }
       if (r.opened) {
-        UI.flashButton(btn, t('usage.opened'), 'check');
-        UI.toast('success', t('usage.mailOpened', { email: acc.email }));
+        var btn = mailButtonOf(acc.email);
+        if (btn) UI.flashButton(btn, t('usage.opened'), 'check');
+        if (!login || login.action === 'none') UI.toast('success', t('usage.mailOpened', { email: acc.email }));
       } else {
         UI.toast('warn', t('usage.mailNoSite', { email: acc.email, domain: r.domain }));
         window.App.go('sites', { prefillDomain: r.domain });
       }
     }, function (e) {
+      setMailBusy(null);
       UI.toast('error', t('usage.mailFailed', { err: UI.errText(e) }));
     });
   }
@@ -140,7 +173,9 @@
         UI.toast('error', t('common.copyFailed', { err: UI.errText(e) }));
       });
     } });
-    var mailBtn = UI.button({ label: t('usage.mail'), icon: 'mail', variant: 'primary', title: t('usage.mailTitle'), onClick: function () { openMail(acc, mailBtn); } });
+    var mailBtn = UI.button({ label: t('usage.mail'), icon: 'mail', variant: 'primary', title: t('usage.mailTitle'), onClick: function () { openMail(acc); } });
+    mailBtn.dataset.mail = acc.email;
+    markMailButton(mailBtn, acc.email);
     actions.append(copyBtn, mailBtn);
 
     c.append(top, meters, actions);

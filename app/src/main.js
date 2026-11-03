@@ -3,9 +3,10 @@ const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
 const { DATA_DIR } = require('./core/paths');
-const { readUsage, addAccount, removeUsage, restoreUsage } = require('./core/usage');
+const { readUsage, addAccount, removeUsage, restoreUsage, setAccountId } = require('./core/usage');
 const mailSites = require('./core/mailSites');
 const sessions = require('./core/sessions');
+const desktopLogin = require('./desktopLogin');
 const settings = require('./settings');
 const I18n = require('./i18n');
 
@@ -137,6 +138,65 @@ function exactSession(id) {
   return hit;
 }
 
+const sameEmail = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+// 桌面端当前登录的是不是这个账号：same | switch | ask（认不出）
+function loginMode(email) {
+  const current = desktopLogin.currentAccountId();
+  if (!current) return 'ask';
+  const accounts = readUsage().accounts;
+  const acc = accounts.find((a) => sameEmail(a.email, email));
+  if (acc && acc.accountId) return acc.accountId === current ? 'same' : 'switch';
+  return accounts.some((a) => a.accountId === current) ? 'switch' : 'ask';
+}
+
+// 为某个邮箱填好登录页后，10 分钟内桌面端换成一个没记录过的账号 ID，就认定是这个邮箱的，补进记录
+let idWatch = null;
+function watchNewAccountId(email) {
+  if (idWatch) clearInterval(idWatch.timer);
+  const before = desktopLogin.currentAccountId();
+  const until = Date.now() + 10 * 60000;
+  const stop = () => { clearInterval(timer); idWatch = null; };
+  const timer = setInterval(() => {
+    if (Date.now() > until) return stop();
+    const id = desktopLogin.currentAccountId();
+    if (!id || id === before) return;
+    stop();
+    const accounts = readUsage().accounts;
+    const acc = accounts.find((a) => sameEmail(a.email, email));
+    if (!acc || acc.accountId || accounts.some((a) => a.accountId === id)) return;
+    try {
+      setAccountId(email, id);
+    } catch {}
+  }, 5000);
+  idWatch = { timer };
+}
+
+let mailBusy = false;
+
+// 「收信」：桌面端不是这个号（或没登录）就先退出登录、填邮箱、点继续，再在浏览器打开收信页
+// mode：不传时自己判断；switch / mailOnly 是页面问过用户后传的
+async function openMail(email, mode) {
+  email = String(email);
+  clipboard.writeText(email);
+  let login = null;
+  if (mode !== 'mailOnly') {
+    const how = mode === 'switch' ? 'switch' : loginMode(email);
+    if (how === 'ask') return { needConfirm: true };
+    login = await desktopLogin.run(email, how);
+    if (login.ok && login.action === 'filled') watchNewAccountId(email);
+    // 桌面端被切到了前面；登录出错时把软件叫回来，好让用户看到提示
+    if (!login.ok) showWindow();
+  }
+  const url = mailSites.mailUrlFor(email);
+  if (!url) {
+    showWindow();
+    return { opened: false, domain: email.split('@')[1] || '', login };
+  }
+  await shell.openExternal(url);
+  return { opened: true, url, login };
+}
+
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
@@ -175,12 +235,14 @@ function registerIpc() {
   });
   ipcMain.handle('app:version', () => app.getVersion());
 
-  ipcMain.handle('mail:open', async (_e, email) => {
-    clipboard.writeText(String(email));
-    const url = mailSites.mailUrlFor(email);
-    if (!url) return { opened: false, domain: String(email).split('@')[1] || '' };
-    await shell.openExternal(url);
-    return { opened: true, url };
+  ipcMain.handle('mail:open', async (_e, email, mode) => {
+    if (mailBusy) throw new Error(t('error.mailBusy'));
+    mailBusy = true;
+    try {
+      return await openMail(email, mode);
+    } finally {
+      mailBusy = false;
+    }
   });
   ipcMain.handle('mail:openSite', (_e, url) => {
     if (!mailSites.isWebUrl(url)) throw new Error(t('error.webUrlOnly'));

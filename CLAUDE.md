@@ -10,6 +10,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - `paths.js`：数据目录 `%USERPROFILE%\.claude\claude-help\` 下的 `usage.json`、`mail-sites.json`。
   - `usage.js`：读取和记录额度，每个账号只保留最新一条。记录里的 `accountId` 是桌面端账号 ID，用来把会话对应到邮箱。
     - 可以手动添加账号（`addAccount`），额度为空：`windows` 为空、`recordedAt` 为 null（用 `format.js` 的 `hasUsage` 判断）。以后记录额度时整条覆盖。
+    - `setAccountId` 给手动添加的账号补上 `accountId`（见下面「收信」）。
   - `sessions.js`：读取桌面端的会话列表，只读这几个字段：标题、目录、时间、归档。
     - 会话列表按账号分目录：`%LOCALAPPDATA%\Claude-Data\claude_<包ID>\claude-code-sessions\<账号ID>\<组织ID>\local_*.json`。切换账号后，桌面端只显示当前账号的会话。
     - 完整对话不分账号：`%USERPROFILE%\.claude\projects\<cwd 编码>\<cliSessionId>.jsonl`。
@@ -31,6 +32,15 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
 - 分工：额度（`get_usage`）只有 Claude 在桌面端会话里能读。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到额度。
 - 不做桌面端设置的备份和应用：2026-11-02 做过 `config save|diff|show` 和「配置」页，后来删除了。原因是大部分设置存在本机，不跟账号走，备份意义不大。
 - `app/src/main.js`：主进程，负责监视 `usage.json`、处理收信地址的增删改、会话的复制续接指令和删除、打开浏览器和数据目录、自动更新。
+  - 「收信」（`openMail`）合并了切换账号：先判断桌面端是不是这个号，不是就退出登录、填邮箱、点继续，再复制账号、在浏览器打开收信页。
+    - 同号判断：桌面端 `config.json` 的 `lastKnownAccountUuid` 和这张卡的 `accountId` 比。卡片没有 `accountId` 时，当前 ID 属于别的已记录账号就算不同号；都对不上就让页面问一次（切换 / 只收信）。
+    - 填好登录页后 10 分钟内，`lastKnownAccountUuid` 变成没记录过的 ID，就用 `setAccountId` 记到这个邮箱上，下次就能判断同号。
+- `app/src/desktopLogin.js` + `desktop-login.ps1`：用 Windows UI Automation 操作桌面端登录页（PowerShell 走 `-EncodedCommand`，参数走环境变量）。
+  - 桌面端屏蔽了 `--remote-debugging-port`，`claude://` 深链接也拦了 `/logout`、`/login`，所以只能从外面点界面。
+  - 网页内容的无障碍树要被查询过才会生成，脚本会等它出现。窗口元素不接受 `SetFocus`，用 `WScript.Shell.AppActivate` 置前。
+  - 左下角账号按钮的名称是“显示名 + 套餐”，按“左下区域、能展开”认；菜单里点「退出登录」；邮箱用剪贴板粘贴。
+  - 按钮文字都在 `desktopLogin.js` 的 `NAMES` 里（中英文），桌面端改了文字只改这里。`desktopLogin.probe()` 只读列出窗口里的控件，用来排查。
+  - 测试钩子：`CLAUDE_HELP_LOGIN_RESULT`（`none`/`filled`/`fail:<步骤>`/`auto`）跳过桌面端；`CLAUDE_HELP_DESKTOP_CONFIG` 指向假的 `config.json`。
   - 点 × 时按 `closeAction`（`ask`/`tray`/`quit`，默认 `ask`）处理：询问、回到后台（系统托盘）或退出。
     - 询问用页面里的 `#closeDialog`：页面先回“已显示”，再回选择。5 秒内没回“已显示”时，改用原生弹窗兜底。
   - 点「重启并安装」后，`.shell` 和提示条设为 `inert` 并盖上遮罩，快捷键也不响应；安装出错时解锁。开发模式下不安装，直接报错。
@@ -42,7 +52,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - `ui.js`：界面文字（`t`、`applyI18n`）、图标、按钮、提示条、确认框。
   - `page-*.js`：各页面。
   - `style.css`：设计变量，跟随系统深浅色。
-  - 「收信」先复制账号；邮箱后缀没配置网址时，跳到「收信地址」页并预填后缀。
+  - 「收信」进行中所有收信按钮禁用；邮箱后缀没配置网址时，跳到「收信地址」页并预填后缀。
 - 命令（在 `app/` 下运行）：
   - `npm start`：开发运行。
   - `npm run dist`：打包 NSIS 安装程序到 `app/dist/`。
