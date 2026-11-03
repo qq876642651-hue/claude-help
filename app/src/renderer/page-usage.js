@@ -84,17 +84,11 @@
     return [].filter.call(cardsEl.querySelectorAll('button[data-mail]'), function (b) { return b.dataset.mail === email; })[0];
   }
 
-  // mode 不传时由主进程判断桌面端是不是这个号；认不出时问一次，再带上 switch / mailOnly 重来
-  function openMail(acc, mode) {
+  // 主进程先判断桌面端是不是这个号，不是就退出登录、填邮箱、点继续，再打开收信页
+  function openMail(acc) {
     setMailBusy(acc.email);
-    api.openMail(acc.email, mode).then(function (r) {
+    api.openMail(acc.email).then(function (r) {
       setMailBusy(null);
-      if (r.needConfirm) {
-        UI.confirm(t('usage.switchConfirm', { email: acc.email }), t('usage.switchOk')).then(function (ok) {
-          openMail(acc, ok ? 'switch' : 'mailOnly');
-        });
-        return;
-      }
       var login = r.login;
       if (login && !login.ok) {
         UI.toast('warn', t('usage.loginFailed', { email: acc.email, step: t('usage.step.' + login.step) }));

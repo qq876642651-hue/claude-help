@@ -6,12 +6,13 @@ const { execFile } = require('child_process');
 const NAMES = {
   logout: ['^(退出登录|登出|注销|Log ?out|Sign ?out)$'],
   continue: ['^(使用(电子)?邮(箱|件)(地址)?继续|继续|Continue with email|Continue)$'],
+  start: ['^(开始使用|Get started|Start)$'],
   email: ['邮箱', '邮件', 'e-?mail'],
   settings: ['设置', 'Settings'],
 };
 
 const SCRIPT = path.join(__dirname, 'desktop-login.ps1');
-const TIMEOUT_MS = 60000;
+const TIMEOUT_MS = 90000;
 
 // 桌面端当前账号：config.json 里的 lastKnownAccountUuid。可能有多份数据目录，取最近改过的那份
 function configFiles() {

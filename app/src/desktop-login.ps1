@@ -84,6 +84,12 @@ function EmailBox($win, $all) {
   return $null
 }
 
+# 退出登录后先出现的欢迎页上的「开始使用」按钮，点了才有邮箱框
+function StartButton($win, $all) {
+  if (AccountButton $win $all) { return $null }
+  return FindNamed $all @('ControlType.Button') $names.start
+}
+
 # 页面上还有填着这个邮箱的输入框
 function EmailStillThere($all) {
   foreach ($e in $all) {
@@ -111,8 +117,28 @@ function Click($e) {
 function State($win) {
   $all = All $win
   if (AccountButton $win $all) { return 'account' }
-  if (EmailBox $win $all) { return 'login' }
+  if ((EmailBox $win $all) -or (StartButton $win $all)) { return 'login' }
   return $null
+}
+
+# 等邮箱框出现，途中遇到「开始使用」就点；点完隔几秒再点，免得翻页途中重复点
+# 刚点了退出登录时（$afterLogout），遇到确认框也点一次
+$clicked = @{ start = [DateTime]::MinValue; confirm = $false }
+function WaitEmailBox($seconds, $afterLogout) {
+  Wait $seconds {
+    $all = All $win
+    $box = EmailBox $win $all
+    if ($box) { return $box }
+    if (((Get-Date) - $clicked.start).TotalSeconds -gt 3) {
+      $btn = StartButton $win $all
+      if ($btn) { Click $btn; $clicked.start = Get-Date; return $null }
+    }
+    if ($afterLogout -and -not $clicked.confirm) {
+      $btn = FindNamed $all @('ControlType.Button') $names.logout
+      if ($btn) { Click $btn; $clicked.confirm = $true }
+    }
+    return $null
+  }
 }
 
 $win = FindWindow
@@ -156,23 +182,14 @@ if ($state -eq 'account') {
     Fail 'logout' 'menu item not found'
   }
   Click $item
-  # 有确认框就点确认；等到出现登录页为止
-  $confirm = @{ clicked = $false }
-  $state = Wait 20 {
-    $all = All $win
-    if (EmailBox $win $all) { return 'login' }
-    if (-not $confirm.clicked) {
-      $btn = FindNamed $all @('ControlType.Button') $names.logout
-      if ($btn) { Click $btn; $confirm.clicked = $true }
-    }
-    return $null
-  }
-  if (-not $state) { Fail 'logout' 'login page did not appear' }
+  $box = WaitEmailBox 30 $true
+  if (-not $box) { Fail 'logout' 'login page did not appear' }
+} else {
+  $box = WaitEmailBox 15 $false
+  if (-not $box) { Fail 'email' 'email box not found' }
 }
 
 # 邮箱用剪贴板粘贴（Claude Help 事先写好），网页的输入框对粘贴一定有反应
-$box = Wait 8 { EmailBox $win (All $win) }
-if (-not $box) { Fail 'email' 'email box not found' }
 try { $box.SetFocus() } catch {}
 [Windows.Forms.SendKeys]::SendWait('^a')
 [Windows.Forms.SendKeys]::SendWait('^v')

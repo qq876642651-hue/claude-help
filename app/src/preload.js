@@ -15,7 +15,7 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   trashSession: (id) => ipcRenderer.invoke('sessions:trash', id),
   version: () => ipcRenderer.invoke('app:version'),
 
-  openMail: (email, mode) => ipcRenderer.invoke('mail:open', email, mode),
+  openMail: (email) => ipcRenderer.invoke('mail:open', email),
   openSite: (url) => ipcRenderer.invoke('mail:openSite', url),
   getMailSites: () => ipcRenderer.invoke('mailSites:get'),
   addMailSite: (domain, url) => ipcRenderer.invoke('mailSites:add', domain, url),
