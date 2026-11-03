@@ -59,9 +59,26 @@ function removeUsage(email) {
   return { removed, count: kept.length };
 }
 
+// 手动添加账号：额度先空着（recordedAt 为 null），以后记录额度时整条覆盖
+function addAccount(email) {
+  email = String(email || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('邮箱格式不对');
+  const key = email.toLowerCase();
+  if (readUsage().accounts.some((a) => String(a.email).toLowerCase() === key)) throw new Error(`已有 ${email}`);
+  const record = {
+    email,
+    plan: '',
+    windows: [],
+    extraUsageEnabled: false,
+    recordedAt: null,
+    addedAt: new Date().toISOString(),
+  };
+  return { record, count: putRecord(record).length };
+}
+
 function restoreUsage(record) {
   if (!record || !String(record.email || '').includes('@') || !Array.isArray(record.windows)) throw new Error('记录格式不对');
   return { count: putRecord(record).length };
 }
 
-module.exports = { readUsage, recordUsage, removeUsage, restoreUsage };
+module.exports = { readUsage, recordUsage, addAccount, removeUsage, restoreUsage };

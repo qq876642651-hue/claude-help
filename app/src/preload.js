@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('claudeHelp', {
   getUsage: () => ipcRenderer.invoke('usage:get'),
   onUsage: (cb) => ipcRenderer.on('usage:changed', (_e, data) => cb(data)),
+  addAccount: (email) => ipcRenderer.invoke('usage:add', email),
   removeUsage: (email) => ipcRenderer.invoke('usage:remove', email),
   restoreUsage: (record) => ipcRenderer.invoke('usage:restore', record),
   copy: (text) => ipcRenderer.invoke('clipboard:write', text),

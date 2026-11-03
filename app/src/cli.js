@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { readUsage, recordUsage, removeUsage } = require('./core/usage');
+const { readUsage, recordUsage, addAccount, removeUsage } = require('./core/usage');
 const { readMailSites, addSite, removeSite, resetSites, mailUrlFor } = require('./core/mailSites');
 const { listSessions, findSession, toSession, accountOfSession, resumePrompt } = require('./core/sessions');
 const { USAGE_FILE, MAIL_SITES_FILE } = require('./core/paths');
@@ -17,6 +17,7 @@ const HELP = `claude-help ${version} — Claude 账号额度与收信工具（�
   claude-help usage record --email <邮箱> [--session <会话ID>] [--file <文件>]
                                                              记录一个账号的额度（plan JSON 从 stdin 或文件读）；
                                                              --session 用来找出桌面端账号 ID，把会话对应到邮箱
+  claude-help usage add <邮箱>                               添加一个账号，额度先空着，以后记录额度时补上
   claude-help usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址）
   claude-help mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
   claude-help sites                                          列出“邮箱后缀 → 收信网址”
@@ -100,6 +101,11 @@ function showUsage(flags) {
     return;
   }
   for (const acc of accounts) {
+    if (!fmt.hasUsage(acc)) {
+      console.log(`${acc.email}  还没有额度记录
+`);
+      continue;
+    }
     console.log(`${acc.email}  ${acc.plan || '未知套餐'}  记录于 ${fmt.ago(acc.recordedAt, now)}`);
     for (const w of acc.windows) {
       const used = fmt.usedNow(w, now);
@@ -121,6 +127,12 @@ function usageRecord(flags) {
   const { record, count } = recordUsage(flags.email, plan, accountId);
   const parts = record.windows.map((w) => `${fmt.labelText(w.label)} 已用 ${w.percentUsed}%`);
   console.log(`已记录 ${record.email}（${record.plan}）：${parts.join('，')}。共 ${count} 个账号。`);
+}
+
+function usageAdd(email) {
+  if (!email) throw new UsageError('用法：claude-help usage add <邮箱>');
+  const { record, count } = addAccount(email);
+  console.log(`已添加 ${record.email}（额度为空，在 Claude 里说“记录额度”后补上）。共 ${count} 个账号。`);
 }
 
 function usageRemove(email) {
@@ -246,6 +258,7 @@ function main(argv) {
   const [cmd, ...rest] = positional;
   if (!cmd || cmd === 'usage') {
     if (rest[0] === 'record') return usageRecord(flags);
+    if (rest[0] === 'add') return usageAdd(rest[1]);
     if (rest[0] === 'remove') return usageRemove(rest[1]);
     if (rest[0]) throw new UsageError(`未知子命令 usage ${rest[0]}`);
     return showUsage(flags);

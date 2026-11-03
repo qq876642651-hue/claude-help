@@ -12,12 +12,14 @@
   var sortKey = UI.storeGet('claude-help-sort', 'weekly');
   var query = '';
   var cardsEl, summaryEl, sortEl;
+  var addDialog, addInput, addHint;
 
   function isWeekly(label) { return /^Weekly/i.test(label); }
   function isFiveHour(label) { return /5-hour/i.test(label); }
 
   // 只陈述状态，不做推荐
   function status(acc, now) {
+    if (!fmt.hasUsage(acc)) return { cls: 'muted', text: '未记录' };
     var exhausted = function (test) {
       return acc.windows.some(function (w) { return test(w.label) && !fmt.isRestored(w, now) && Number(w.percentUsed) >= 100; });
     };
@@ -109,14 +111,17 @@
     var age = now - new Date(acc.recordedAt).getTime();
     var stale = age > DAY;
     var meta = UI.el('div', 'meta');
-    meta.append(UI.el('span', 'plan', acc.plan || '未知套餐'));
-    if (stale) {
+    if (!fmt.hasUsage(acc)) {
+      meta.append('还没有额度记录');
+      meta.title = '在 Claude 桌面端登录这个账号后说“记录额度”即可补上';
+    } else if (stale) {
+      meta.append(UI.el('span', 'plan', acc.plan || '未知套餐'));
       var warn = UI.el('span', 'stale');
       warn.append(UI.icon('alert'), Math.floor(age / DAY) + ' 天前记录 · 可能过期');
       warn.title = '在 Claude 里说“记录额度”即可更新';
       meta.append(warn);
     } else {
-      meta.append('记录于 ' + fmt.ago(acc.recordedAt, now));
+      meta.append(UI.el('span', 'plan', acc.plan || '未知套餐'), '记录于 ' + fmt.ago(acc.recordedAt, now));
     }
     who.append(email, meta);
     var st = status(acc, now);
@@ -125,7 +130,8 @@
     top.append(UI.el('div', 'avatar', acc.email.charAt(0)), who, UI.el('span', 'chip ' + st.cls, st.text), del);
 
     var meters = UI.el('div', 'meters');
-    acc.windows.forEach(function (w) { meters.appendChild(meter(w, now)); });
+    if (fmt.hasUsage(acc)) acc.windows.forEach(function (w) { meters.appendChild(meter(w, now)); });
+    else meters.appendChild(UI.el('div', 'no-usage', '额度暂时为空。在 Claude 桌面端登录这个账号后说“记录额度”，这里会自动更新。'));
 
     var actions = UI.el('div', 'card-actions');
     var copyBtn = UI.button({ label: '复制账号', icon: 'copy', onClick: function () {
@@ -140,7 +146,7 @@
     return c;
   }
 
-  function emptyState(text, steps) {
+  function emptyState(text, steps, action) {
     var box = UI.el('div', 'empty');
     var ic = UI.el('div', 'empty-icon');
     ic.appendChild(UI.icon('inbox'));
@@ -150,15 +156,50 @@
       steps.forEach(function (s) { ol.appendChild(UI.el('li', null, s)); });
       box.appendChild(ol);
     }
+    if (action) box.appendChild(action);
     return box;
+  }
+
+  // 手动添加账号：额度先空着，以后记录额度时整条覆盖
+  function openAddDialog() {
+    addInput.value = '';
+    setAddHint('');
+    addDialog.showModal();
+    addInput.focus();
+  }
+
+  function setAddHint(msg) {
+    addHint.textContent = msg;
+    addInput.classList.toggle('invalid', Boolean(msg));
+  }
+
+  function submitAdd(e) {
+    e.preventDefault();
+    var email = addInput.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAddHint(email ? '邮箱格式不对，例如 name@example.com' : '请填写邮箱');
+      return addInput.focus();
+    }
+    var key = email.toLowerCase();
+    if (accounts.some(function (a) { return a.email.toLowerCase() === key; })) {
+      setAddHint('已有这个账号');
+      return addInput.focus();
+    }
+    api.addAccount(email).then(function (r) {
+      addDialog.close();
+      flashUntil[r.record.email] = Date.now() + FLASH_MS;
+      UI.toast('success', '已添加 ' + r.record.email + '，额度先空着');
+      return api.getUsage().then(setData);
+    }, function (err) {
+      setAddHint(UI.errText(err));
+    });
   }
 
   function render() {
     var now = Date.now();
     var latest = accounts.reduce(function (m, a) { return Math.max(m, new Date(a.recordedAt).getTime() || 0); }, 0);
-    summaryEl.textContent = accounts.length
-      ? accounts.length + ' 个账号 · 最近记录 ' + fmt.ago(new Date(latest).toISOString(), now)
-      : '还没有记录';
+    summaryEl.textContent = !accounts.length ? '还没有记录'
+      : accounts.length + ' 个账号 · ' + (latest ? '最近记录 ' + fmt.ago(new Date(latest).toISOString(), now) : '还没有额度记录');
 
     [].forEach.call(sortEl.querySelectorAll('button'), function (b) {
       b.setAttribute('aria-checked', String(b.dataset.sort === sortKey));
@@ -173,7 +214,8 @@
         '在 Claude 桌面端对 Claude 说“记录额度”。',
         'Claude 会读取当前账号的额度，并交给命令行 claude-help usage record 保存。',
         '记录完成后，这里会自动出现该账号，不用刷新。',
-      ]));
+        '也可以点「添加账号」先把账号加进来，额度以后再记录。',
+      ], UI.button({ label: '添加账号', icon: 'plus', variant: 'primary', onClick: openAddDialog })));
       return;
     }
     if (!list.length) {
@@ -211,6 +253,14 @@
       query = search.value;
       render();
     });
+
+    addDialog = document.getElementById('addAccountDialog');
+    addInput = document.getElementById('addAccountEmail');
+    addHint = document.getElementById('addAccountHint');
+    document.getElementById('usageAdd').addEventListener('click', openAddDialog);
+    document.getElementById('addAccountForm').addEventListener('submit', submitAdd);
+    document.getElementById('addAccountCancel').addEventListener('click', function () { addDialog.close(); });
+    addInput.addEventListener('input', function () { setAddHint(''); });
 
     api.getUsage().then(setData);
     api.onUsage(setData);

@@ -47,6 +47,7 @@
             <button type="button" role="radio" data-sort="fiveHour">5 小时剩余</button>
             <button type="button" role="radio" data-sort="recorded">最近记录</button>
           </div>
+          <button class="btn" type="button" id="usageAdd"><span class="icon" data-icon="plus"></span><span>添加账号</span></button>
         </div>
       </header>
       <div class="page-body">
@@ -178,6 +179,22 @@
       <button class="btn ghost" value="cancel" type="submit">取消</button>
       <button class="btn" value="quit" type="submit">退出</button>
       <button class="btn primary" value="tray" type="submit" autofocus>回到后台</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm add-dialog" id="addAccountDialog">
+  <form method="dialog" id="addAccountForm" novalidate>
+    <h2>添加账号</h2>
+    <label class="field">
+      <span class="field-label">邮箱</span>
+      <input id="addAccountEmail" type="email" placeholder="name@example.com" autocomplete="off" spellcheck="false">
+      <em class="field-hint" id="addAccountHint"></em>
+    </label>
+    <p class="sub">额度先空着，在 Claude 里说“记录额度”后补上。</p>
+    <div class="confirm-actions">
+      <button class="btn" value="cancel" type="button" id="addAccountCancel">取消</button>
+      <button class="btn primary" type="submit"><span class="icon" data-icon="plus"></span><span>添加</span></button>
     </div>
   </form>
 </dialog>

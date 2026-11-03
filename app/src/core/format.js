@@ -32,9 +32,18 @@
     return w ? 100 - usedNow(w, now) : -1;
   }
 
+  // 手动添加、还没记录过额度的账号 recordedAt 为 null
+  function hasUsage(acc) {
+    return Boolean(acc.recordedAt);
+  }
+
+  function recordedTime(acc) {
+    return new Date(acc.recordedAt).getTime() || 0;
+  }
+
   function sortAccounts(accounts, kind, now) {
     return accounts.slice().sort(function (a, b) {
-      if (kind === 'recorded') return new Date(b.recordedAt) - new Date(a.recordedAt);
+      if (kind === 'recorded') return recordedTime(b) - recordedTime(a);
       return remaining(b, kind, now) - remaining(a, kind, now);
     });
   }
@@ -58,6 +67,7 @@
     isRestored: isRestored,
     usedNow: usedNow,
     remaining: remaining,
+    hasUsage: hasUsage,
     sortAccounts: sortAccounts,
     duration: duration,
     ago: ago,

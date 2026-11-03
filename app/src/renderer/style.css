@@ -181,6 +181,8 @@ input.invalid:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
 .chip.ok { background: var(--ok-soft); color: var(--ok); }
 .chip.warn { background: var(--warn-soft); color: var(--warn); }
 .chip.danger { background: var(--danger-soft); color: var(--danger); }
+.chip.muted { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); padding: 1px 8px; }
+.no-usage { padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); color: var(--text-2); font-size: 13px; }
 
 .meters { display: flex; flex-direction: column; gap: 12px; }
 .meter-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -207,6 +209,7 @@ input.invalid:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
 .empty h2 { margin-bottom: 6px; }
 .empty ol { margin: 10px 0 0; padding-left: 20px; color: var(--text-2); }
 .empty li + li { margin-top: 4px; }
+.empty > .btn { margin-top: 16px; }
 
 /* ---------- 收信地址 ---------- */
 .site-form { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; padding-bottom: 8px; }
@@ -292,6 +295,9 @@ input.invalid:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
 }
 .confirm::backdrop { background: rgba(20, 16, 10, .35); }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.add-dialog h2 { margin-bottom: 14px; }
+.add-dialog .field { width: 100%; }
+.add-dialog .sub { margin-top: 2px; }
 .close-dialog { width: 420px; }
 .close-dialog h2 { margin-bottom: 2px; }
 .check { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--text-2); cursor: pointer; }
