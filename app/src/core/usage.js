@@ -10,21 +10,34 @@ function readUsage() {
   }
 }
 
+// plan 由 Claude 手动传进来，可能抄错；不对就报错，免得盖掉好记录
+function checkWindows(windows) {
+  if (!Array.isArray(windows) || !windows.length) throw new Error('plan.windows 是空的，没有记录');
+  for (const w of windows) {
+    const percent = w && w.percentUsed;
+    // resetsAt 可以没有（旧逻辑一直允许），有的话必须能解析
+    if (!w || !w.label || percent === '' || percent === null || !Number.isFinite(Number(percent)) || (w.resetsAt && Number.isNaN(new Date(w.resetsAt).getTime()))) {
+      throw new Error(`plan.windows 里有不对的一条：${JSON.stringify(w)}，没有记录`);
+    }
+  }
+}
+
 // plan 是桌面端 get_usage 返回的 plan 对象；每个账号只保留最新一条
 // accountId 是桌面端的账号 ID（用来把会话对应到邮箱），没传时沿用旧记录里的
 function recordUsage(email, plan, accountId) {
   email = String(email || '').trim();
   if (!email.includes('@')) throw new Error('需要账号邮箱');
   if (!plan || plan.status !== 'ok') throw new Error(`plan.status 是 ${plan && plan.status}，没有记录`);
+  checkWindows(plan.windows);
 
   const old = readUsage().accounts.find((a) => String(a.email).toLowerCase() === email.toLowerCase());
   const record = {
     email,
     accountId: accountId || (old && old.accountId) || undefined,
     plan: String(plan.plan || ''),
-    windows: (plan.windows || []).map((w) => ({
+    windows: plan.windows.map((w) => ({
       label: String(w.label),
-      percentUsed: Number(w.percentUsed) || 0,
+      percentUsed: Number(w.percentUsed),
       resetsAt: String(w.resetsAt || ''),
     })),
     extraUsageEnabled: Boolean(plan.extraUsage && plan.extraUsage.enabled),

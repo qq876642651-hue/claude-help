@@ -243,7 +243,6 @@ function registerIpc() {
   ipcMain.handle('mailSites:add', (_e, domain, url) => mailSites.addSite(domain, url));
   ipcMain.handle('mailSites:update', (_e, oldDomain, domain, url) => mailSites.updateSite(oldDomain, domain, url));
   ipcMain.handle('mailSites:remove', (_e, domain) => mailSites.removeSite(domain));
-  ipcMain.handle('mailSites:reset', () => mailSites.resetSites());
 
   ipcMain.handle('settings:get', () => settings.get());
   ipcMain.handle('settings:set', (_e, key, value) => {

@@ -1,4 +1,4 @@
-// 「收信地址」页：新增、原地编辑、删除、恢复默认，每步立即保存
+// 「收信地址」页：新增、原地编辑、删除，每步立即保存
 (function () {
   var api = window.claudeHelp;
   var UI = window.UI;
@@ -155,15 +155,6 @@
         saved(list, t(exists ? 'sites.updated' : 'sites.added', { domain: dv }), dv);
       }, function (err) {
         UI.toast('error', UI.errText(err));
-      });
-    });
-
-    document.getElementById('sitesReset').addEventListener('click', function () {
-      UI.confirm(t('sites.resetConfirm'), t('sites.reset')).then(function (ok) {
-        if (!ok) return;
-        api.resetMailSites().then(function (list) { saved(list, t('sites.resetDone')); }, function (e) {
-          UI.toast('error', UI.errText(e));
-        });
       });
     });
 

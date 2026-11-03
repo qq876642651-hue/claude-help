@@ -1,13 +1,6 @@
 const fs = require('fs');
 const { DATA_DIR, MAIL_SITES_FILE } = require('./paths');
 
-// 预置只有一条；其他后缀由用户在软件或 CLI 里添加
-const DEFAULT_SITES = [{ domain: 'poczta.onet.pl', url: 'https://onet.yulishomes.com/' }];
-
-function defaultSites() {
-  return DEFAULT_SITES.map((s) => ({ ...s }));
-}
-
 function normalizeDomain(domain) {
   return String(domain || '').trim().toLowerCase().replace(/^@/, '').replace(/^\./, '');
 }
@@ -26,6 +19,7 @@ function checkSite(domain, url) {
   if (!isWebUrl(url)) throw new Error('网址要以 http:// 或 https:// 开头');
 }
 
+// 不预置网址：都由用户在软件或 CLI 里添加
 function readMailSites() {
   try {
     const list = JSON.parse(fs.readFileSync(MAIL_SITES_FILE, 'utf8')).sites;
@@ -35,7 +29,7 @@ function readMailSites() {
         .filter((s) => s.domain && isWebUrl(s.url));
     }
   } catch {}
-  return defaultSites();
+  return [];
 }
 
 function writeMailSites(sites) {
@@ -75,13 +69,6 @@ function removeSite(domain) {
   return writeMailSites(kept);
 }
 
-function resetSites() {
-  try {
-    fs.unlinkSync(MAIL_SITES_FILE);
-  } catch {}
-  return defaultSites();
-}
-
 // 邮箱域名等于后缀，或以“.后缀”结尾都算匹配；多条匹配取最长的后缀
 function findSite(email) {
   const domain = normalizeDomain(String(email).split('@')[1]);
@@ -98,4 +85,4 @@ function mailUrlFor(email) {
   return site ? site.url : null;
 }
 
-module.exports = { readMailSites, addSite, updateSite, removeSite, resetSites, findSite, mailUrlFor, isWebUrl };
+module.exports = { readMailSites, addSite, updateSite, removeSite, findSite, mailUrlFor, isWebUrl };

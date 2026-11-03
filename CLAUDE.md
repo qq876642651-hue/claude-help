@@ -12,7 +12,9 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
     - 可以手动添加账号（`addAccount`），额度为空：`windows` 为空、`recordedAt` 为 null（用 `format.js` 的 `hasUsage` 判断）。以后记录额度时整条覆盖。
     - `setAccountId` 给手动添加的账号补上 `accountId`（见下面「收信」）。
     - 一个 `accountId` 只对应一个邮箱，写入时会去掉其他记录上的同一 ID。
-    - `usage record` 的邮箱以 `--session` 查到的账号 ID 为准：会话上下文里的邮箱来自 `~/.claude.json`，桌面端切换账号后不会更新。ID 已记过就不用 `--email`；`--email` 和 ID 对不上（ID 记在别的邮箱上，或这个邮箱记着别的 ID）时报错不写入，`--reassign` 强制改记。
+    - `usage record` 的邮箱以当前会话的账号 ID 为准：会话上下文里的邮箱来自 `~/.claude.json`，桌面端切换账号后不会更新。ID 已记过就不用 `--email`；`--email` 和 ID 对不上（ID 记在别的邮箱上，或这个邮箱记着别的 ID）时报错不写入，`--reassign` 强制改记。
+    - 账号 ID 来自桌面端给会话设的环境变量（未公开，可能变化）：先用 `CLAUDE_CODE_HOST_SESSION_ID` 查会话文件，查不到再用 `CLAUDE_CODE_ACCOUNT_UUID`。不读 `CLAUDE_CODE_USER_EMAIL`，切换账号后它可能和上下文邮箱一样过时。
+    - `recordUsage` 会校验 `windows`，抄错的数据报错不写入，免得盖掉好记录。
   - `sessions.js`：读取桌面端的会话列表，只读这几个字段：标题、目录、时间、归档。
     - 会话列表按账号分目录：`%LOCALAPPDATA%\Claude-Data\claude_<包ID>\claude-code-sessions\<账号ID>\<组织ID>\local_*.json`。切换账号后，桌面端只显示当前账号的会话。
     - 完整对话不分账号：`%USERPROFILE%\.claude\projects\<cwd 编码>\<cliSessionId>.jsonl`。
@@ -21,7 +23,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
     - 「会话」页和 `cchelp sessions` 都按“账号 → 项目 → 会话”分三层，页面上的项目可以收起，收起状态存在 localStorage。
     - 删除只在软件里做，用 `shell.trashItem` 移到回收站。
     - 测试时用 `CLAUDE_HELP_SESSIONS_DIR` 指向假的会话目录，用 `CLAUDE_CONFIG_DIR` 指定 `.claude` 目录。
-  - `mailSites.js`：邮箱后缀 → 收信网址。默认只有 `poczta.onet.pl → https://onet.yulishomes.com/`；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
+  - `mailSites.js`：邮箱后缀 → 收信网址。不预置网址（分发给别人时不该默认指向第三方网站），也就没有“恢复默认”；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
   - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。默认中文，软件按界面语言调用 `setLang('en')`。
 - `app/src/i18n.js`：软件界面的中英文字表（UMD），主进程和页面共用。CLI 和 core 里的报错、续接指令保持中文。
   - 语言设置 `language`：`system`（默认，系统语言是中文就用中文，否则英文）/`zh`/`en`，在「关于」页切换。
@@ -30,6 +32,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
 - `app/src/cli.js`：`cchelp` 命令，包括 `usage`、`usage record`、`usage add`、`usage remove`、`mail`、`sites`、`sessions`、`sessions resume`。用法和“给 Claude 的说明”都在 `--help` 里。
   - 命令名用 `cchelp` 而不是 `claude-help`：用户说“用 claude help 记录额度”时，Claude 会联想成 `claude --help`。2026-11-03 改名，包名、数据目录 `.claude\claude-help\`、GitHub 仓库名不变。
   - 安装后由安装目录里的 `cchelp.cmd`（源文件 `app/build/cchelp.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
+  - Git Bash 不会把 `cchelp` 解析成 `cchelp.cmd`，所以同目录还放一个无扩展名的 sh 脚本（`app/build/cchelp`，转调 `cchelp.cmd`，必须是 LF 换行，由 `.gitattributes` 固定）。
   - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
   - 开发时用 `npm run cli -- <参数>`。
 - 分工：额度（`get_usage`）只有 Claude 在桌面端会话里能读。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到额度。

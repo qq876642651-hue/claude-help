@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { readUsage, recordUsage, addAccount, removeUsage, findByEmail, findByAccountId } = require('./core/usage');
-const { readMailSites, addSite, removeSite, resetSites, mailUrlFor } = require('./core/mailSites');
+const { readMailSites, addSite, removeSite, mailUrlFor } = require('./core/mailSites');
 const { listSessions, findSession, toSession, accountOfSession, resumePrompt } = require('./core/sessions');
 const { USAGE_FILE, MAIL_SITES_FILE } = require('./core/paths');
 const fmt = require('./core/format');
@@ -14,26 +14,26 @@ const HELP = `cchelp ${version} — Claude 账号额度与收信工具（与 Cla
 
 用法：
   cchelp [usage] [--sort weekly|5h|recorded] [--json]   显示各账号额度（默认按每周剩余排序）
-  cchelp usage record --session <会话ID> [--email <邮箱>] [--reassign] [--file <文件>]
+  cchelp usage record [--email <邮箱>] [--reassign] [--file <文件>]
                                                         记录一个账号的额度（plan JSON 从 stdin 或文件读）；
-                                                        --session 找出桌面端账号 ID，记过的账号不用 --email；
+                                                        自动认出当前会话的桌面端账号，记过的账号不用 --email；
                                                         --email 和账号 ID 对不上时不写入，确认后加 --reassign 改记
   cchelp usage add <邮箱>                               添加一个账号，额度先空着，以后记录额度时补上
   cchelp usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址）
   cchelp mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
   cchelp sites                                          列出“邮箱后缀 → 收信网址”
-  cchelp sites add <后缀> <网址> | remove <后缀> | reset
-    匹配规则：邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀；默认只有 poczta.onet.pl
+  cchelp sites add <后缀> <网址> | remove <后缀>
+    匹配规则：邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀
   cchelp sessions [--json]                              按账号列出桌面端的全部会话（切换账号后桌面端只显示当前账号的）
   cchelp sessions resume <会话ID或前缀>                  打印并复制续接指令：在当前账号新建会话后粘贴，接着旧会话做
   cchelp --version | --help
 
 给 Claude 的说明（额度只有你在 Claude 桌面端会话里能读，本工具只负责存数据）：
-  记录额度：调用 mcp__ccd_session_mgmt__get_usage；plan.status 为 ok 时，再调用
-    mcp__ccd_session_mgmt__get_session（session_id 填 "self"），把 plan 对象的 JSON 通过 stdin 交给
-    cchelp usage record --session <get_session 返回的 sessionId>（先不带 --email）。
-    提示“还没对应过邮箱”时，问用户当前登录的是哪个邮箱，再加 --email <邮箱> 重新运行。
-    不要用会话上下文或 ~/.claude.json 里的邮箱：桌面端切换账号后它们不会更新，会记到别的号上。
+  记录额度：调用 mcp__ccd_session_mgmt__get_usage（可能要先用 ToolSearch 加载）；plan.status 为 ok 时，
+    把 plan 对象的 JSON 通过 stdin 交给 cchelp usage record（先不带 --email）。
+    提示要邮箱时，问用户当前登录的是哪个邮箱，再加 --email <邮箱> 重新运行。
+    不要用会话上下文、环境变量或 ~/.claude.json 里的邮箱：桌面端切换账号后它们可能不会更新，会记到别的号上。
+    没有 get_usage 这个工具时，告诉用户要在 Claude 桌面端的 Code 页里说，不要编数字。
 
 数据文件：
   ${USAGE_FILE}
@@ -50,7 +50,7 @@ function parseArgs(argv) {
     if (a.startsWith('--')) {
       const name = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('--') && ['sort', 'email', 'file', 'session'].includes(name)) {
+      if (next !== undefined && !next.startsWith('--') && ['sort', 'email', 'file'].includes(name)) {
         flags[name] = next;
         i++;
       } else {
@@ -118,22 +118,26 @@ function showUsage(flags) {
   }
 }
 
+// 桌面端给会话设的环境变量（未公开，可能变化）：先查会话文件，读不到再用账号 ID 变量
+function currentAccountId() {
+  const session = process.env.CLAUDE_CODE_HOST_SESSION_ID;
+  return (session && accountOfSession(session)) || process.env.CLAUDE_CODE_ACCOUNT_UUID || null;
+}
+
 // 邮箱以会话的账号 ID 为准：会话上下文里的邮箱在桌面端切换账号后不会更新，传进来的 --email 可能是别的号
 function usageRecord(flags) {
   let email = typeof flags.email === 'string' ? flags.email.trim() : '';
-  const session = typeof flags.session === 'string' ? flags.session : '';
-  if (!email && !session) throw new UsageError('需要 --session <会话ID>（或 --email <邮箱>）');
-  const plan = readInput(flags.file);
-  let accountId = null;
-  if (session) {
-    accountId = accountOfSession(session);
-    if (!accountId) console.log(`没找到会话 ${session}，这次不更新账号 ID。`);
-  }
+  const input = readInput(flags.file);
+  // 完整的 get_usage 输出（{ plan, context }）也接受
+  const plan = input && typeof input.plan === 'object' && input.plan ? input.plan : input;
+  const accountId = currentAccountId();
   const known = findByAccountId(accountId);
   if (!email) {
-    if (!accountId) throw new UsageError('认不出会话的账号，需要 --email <邮箱>');
+    if (!accountId) {
+      throw new UsageError('认不出当前会话的账号，没有写入。问用户当前登录的是哪个邮箱，再加 --email <邮箱> 重新运行；不要用会话上下文或环境变量里的邮箱。');
+    }
     if (!known) {
-      throw new UsageError(`桌面端账号 ${accountId} 还没对应过邮箱，没有写入。问用户当前登录的是哪个邮箱，再加 --email <邮箱> 重新运行。`);
+      throw new UsageError(`桌面端账号 ${accountId} 还没对应过邮箱，没有写入。问用户当前登录的是哪个邮箱，再加 --email <邮箱> 重新运行；不要用会话上下文或环境变量里的邮箱。`);
     }
     email = known.email;
   } else if (accountId && !flags.reassign) {
@@ -207,10 +211,6 @@ function sites(args) {
     if (!a) throw new UsageError('用法：cchelp sites remove <后缀>');
     removeSite(a);
     console.log(`已删除：${a}`);
-    return;
-  } else if (sub === 'reset') {
-    resetSites();
-    console.log('已恢复默认收信地址');
     return;
   } else throw new UsageError(`未知子命令 sites ${sub}`);
   if (!list.length) console.log('还没有收信地址，运行 cchelp sites add <后缀> <网址> 添加');

@@ -32,6 +32,10 @@
       {
         "from": "build/cchelp.cmd",
         "to": "cchelp.cmd"
+      },
+      {
+        "from": "build/cchelp",
+        "to": "cchelp"
       }
     ],
     "win": {

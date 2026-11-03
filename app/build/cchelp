@@ -1,0 +1,3 @@
+#!/bin/sh
+# Git Bash does not resolve "cchelp" to cchelp.cmd, so this file sits next to it
+exec "$(dirname "$0")/cchelp.cmd" "$@"

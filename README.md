@@ -57,7 +57,7 @@ Claude 桌面端按账号分开存放会话列表，切换账号后只显示当�
 
 1. 打开 [Releases](https://github.com/qq876642651-hue/claude-help/releases/latest)，下载 `Claude-Help-Setup-<版本>.exe`。
 2. 运行安装程序，可以自选安装位置。安装程序没有代码签名，Windows 可能会提示“未知发布者”。
-3. 安装程序会把安装目录加进用户 PATH，**新开**一个终端就能使用 `cchelp`。
+3. 安装程序会把安装目录加进用户 PATH，**新开**一个终端就能使用 `cchelp`。如果 Claude 桌面端正开着，要重启它，否则会话里可能找不到 `cchelp`。
 
 只支持 Windows。
 
@@ -69,20 +69,20 @@ Claude 桌面端按账号分开存放会话列表，切换账号后只显示当�
 
 > 用 cchelp 记录额度
 
-Claude 会读取当前账号的额度和会话 ID，交给 `cchelp usage record` 保存，软件随即刷新。具体流程写在 `cchelp --help` 的“给 Claude 的说明”里，Claude 会照着做。
+Claude 会读取当前账号的额度，交给 `cchelp usage record` 保存，软件随即刷新。具体流程写在 `cchelp --help` 的“给 Claude 的说明”里，Claude 会照着做。
 
-每个账号需要在登录状态下各记录一次。
+每个账号需要在登录状态下各记录一次。第一次记录某个账号时，Claude 会问你当前登录的邮箱。
 
 ### 命令行
 
 | 命令 | 作用 |
 |---|---|
 | `cchelp` | 显示各账号额度，默认按每周剩余排序；`--sort weekly\|5h\|recorded`，`--json` |
-| `cchelp usage record --session <会话ID> [--email <邮箱>] [--reassign] [--file <文件>]` | 记录当前账号的额度（plan JSON 从 stdin 或文件读入），一般由 Claude 调用。邮箱按会话的账号 ID 找，第一次记录这个号时才要 `--email`；`--email` 和账号 ID 对不上时不写入，确认后加 `--reassign` |
+| `cchelp usage record [--email <邮箱>] [--reassign] [--file <文件>]` | 记录当前账号的额度（plan JSON 从 stdin 或文件读入），一般由 Claude 在桌面端会话里调用。自动认出会话的账号，第一次记录这个号时才要 `--email`；`--email` 和账号 ID 对不上时不写入，确认后加 `--reassign` |
 | `cchelp usage remove <邮箱>` | 删除一个账号的额度记录 |
 | `cchelp mail <邮箱> [--print]` | 复制账号并用默认浏览器打开收信网址；`--print` 只打印网址 |
 | `cchelp sites` | 列出收信地址 |
-| `cchelp sites add <后缀> <网址>` / `remove <后缀>` / `reset` | 添加、删除收信地址，或恢复默认 |
+| `cchelp sites add <后缀> <网址>` / `remove <后缀>` | 添加、删除收信地址 |
 | `cchelp sessions [--json]` | 按账号和项目列出全部会话 |
 | `cchelp sessions resume <会话ID或前缀>` | 打印续接指令并复制到剪贴板 |
 | `cchelp --help` / `--version` | 帮助和版本 |

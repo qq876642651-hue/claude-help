@@ -21,7 +21,6 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   addMailSite: (domain, url) => ipcRenderer.invoke('mailSites:add', domain, url),
   updateMailSite: (oldDomain, domain, url) => ipcRenderer.invoke('mailSites:update', oldDomain, domain, url),
   removeMailSite: (domain) => ipcRenderer.invoke('mailSites:remove', domain),
-  resetMailSites: () => ipcRenderer.invoke('mailSites:reset'),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),
