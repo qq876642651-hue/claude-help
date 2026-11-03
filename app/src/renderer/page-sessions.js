@@ -1,4 +1,4 @@
-// 「会话」页：按账号列出桌面端的全部会话，复制续接指令，删除（移到回收站）
+// 「会话」页：按账号列出桌面端的全部会话，复制会话地址，复制续接指令，删除（移到回收站）
 (function () {
   var api = window.claudeHelp;
   var fmt = window.UsageFormat;
@@ -51,9 +51,18 @@
     return { head: head, open: open };
   }
 
+  function copyPath(s, btn) {
+    api.copy(s.transcript).then(function () {
+      UI.flashButton(btn, '', 'check');
+      UI.toast('success', t('sessions.copiedPath'));
+    }, function (e) {
+      UI.toast('error', t('common.copyFailed', { err: UI.errText(e) }));
+    });
+  }
+
   function copyResume(s, btn) {
     api.copyResume(s.id).then(function (r) {
-      UI.flashButton(btn, '', 'check');
+      UI.flashButton(btn, t('common.copied'), 'check');
       UI.toast('success', t('sessions.copiedResume', { cwd: r.cwd }));
     }, function (e) {
       UI.toast('error', t('common.copyFailed', { err: UI.errText(e) }));
@@ -82,8 +91,9 @@
 
     var actions = UI.el('div', 'site-actions');
     if (s.transcript) {
-      var copy = UI.button({ label: t('sessions.copyResume'), icon: 'copy', variant: 'icon', onClick: function () { copyResume(s, copy); } });
-      actions.appendChild(copy);
+      var path = UI.button({ label: t('sessions.copyPath'), icon: 'link', variant: 'icon', onClick: function () { copyPath(s, path); } });
+      var resume = UI.button({ label: t('sessions.copyResume'), title: t('sessions.copyResumeTitle'), icon: 'history', variant: 'ghost', onClick: function () { copyResume(s, resume); } });
+      actions.append(path, resume);
     } else {
       actions.appendChild(UI.el('span', 'session-missing', t('sessions.noTranscript')));
     }

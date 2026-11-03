@@ -19,7 +19,8 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
     - 会话列表按账号分目录：`%LOCALAPPDATA%\Claude-Data\claude_<包ID>\claude-code-sessions\<账号ID>\<组织ID>\local_*.json`。切换账号后，桌面端只显示当前账号的会话。
     - 完整对话不分账号：`%USERPROFILE%\.claude\projects\<cwd 编码>\<cliSessionId>.jsonl`。
     - 这些是桌面端未公开的内部格式，可能变化，读不到就不显示。
-    - 恢复方式只做“复制续接指令”（新会话里粘贴，让 Claude 读旧记录），不改桌面端文件。
+    - 恢复方式只做“复制续接指令”（新会话里粘贴，让 Claude 读旧记录），不改桌面端文件。页面上的「接续」按钮就是做这个。
+    - 「会话」页的“复制会话地址”复制的是对话记录 `.jsonl` 的完整路径。
     - 「会话」页和 `cchelp sessions` 都按“账号 → 项目 → 会话”分三层，页面上的项目可以收起，收起状态存在 localStorage。
     - 删除只在软件里做，用 `shell.trashItem` 移到回收站。
     - 测试时用 `CLAUDE_HELP_SESSIONS_DIR` 指向假的会话目录，用 `CLAUDE_CONFIG_DIR` 指定 `.claude` 目录。
