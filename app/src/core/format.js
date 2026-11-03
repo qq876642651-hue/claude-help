@@ -1,12 +1,22 @@
 // 额度显示用的辅助函数，桌面软件（<script src>）和 CLI（require）共用
+// 默认中文；桌面软件按界面语言调用 setLang('en')，CLI 不调用
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.UsageFormat = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
+  var en = false;
+
+  function setLang(lang) {
+    en = lang === 'en';
+  }
+
   function labelText(label) {
-    if (/5-hour/i.test(label)) return '5 小时';
+    if (/5-hour/i.test(label)) return en ? '5-hour' : '5 小时';
     var m = /^Weekly\s*·\s*(.+)$/i.exec(label);
-    if (m) return /all models/i.test(m[1]) ? '每周 · 全部模型' : '每周 · ' + m[1];
+    if (m) {
+      if (/all models/i.test(m[1])) return en ? 'Weekly · all models' : '每周 · 全部模型';
+      return (en ? 'Weekly · ' : '每周 · ') + m[1];
+    }
     return label;
   }
 
@@ -51,6 +61,7 @@
   function duration(ms) {
     var min = Math.max(0, Math.floor(ms / 60000));
     var d = Math.floor(min / 1440), h = Math.floor(min % 1440 / 60), m = min % 60;
+    if (en) return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
     if (d) return d + ' 天 ' + h + ' 小时';
     if (h) return h + ' 小时 ' + m + ' 分';
     return m + ' 分';
@@ -58,11 +69,12 @@
 
   function ago(iso, now) {
     var ms = now - new Date(iso).getTime();
-    if (ms < 60000) return '刚刚';
-    return duration(ms) + '前';
+    if (ms < 60000) return en ? 'just now' : '刚刚';
+    return en ? duration(ms) + ' ago' : duration(ms) + '前';
   }
 
   return {
+    setLang: setLang,
     labelText: labelText,
     isRestored: isRestored,
     usedNow: usedNow,

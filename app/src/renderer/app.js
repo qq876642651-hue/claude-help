@@ -23,7 +23,11 @@
     PAGES[name].show(opts);
   }
 
+  UI.applyI18n(document);
   UI.hydrateIcons(document);
+  [].forEach.call(document.querySelectorAll('.nav-item'), function (b) {
+    b.title = UI.t('nav.shortcut', { name: UI.t('nav.' + b.dataset.page), n: ORDER.indexOf(b.dataset.page) + 1 });
+  });
   ORDER.forEach(function (p) { PAGES[p].init(); });
 
   document.querySelector('.nav').addEventListener('click', function (e) {
@@ -50,7 +54,7 @@
   api.onUpdate(function (info) {
     window.AboutPage.update(info);
     dot.hidden = !(info.status === 'available' || info.status === 'downloading' || info.status === 'downloaded');
-    if (info.status === 'downloaded') UI.toast('info', '新版本 v' + info.version + ' 已下载，可在「关于」里重启安装');
+    if (info.status === 'downloaded') UI.toast('info', UI.t('app.updateReady', { version: info.version }));
   });
 
   // 主进程在点 × 时来问：回到后台、退出还是取消

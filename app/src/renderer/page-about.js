@@ -1,37 +1,30 @@
-// 「关于」页：版本与更新、命令行说明、数据位置
+// 「关于」页：版本与更新、关闭窗口时、语言、命令行说明、数据位置
 (function () {
   var api = window.claudeHelp;
   var UI = window.UI;
+  var t = UI.t;
 
   var COMMANDS = [
-    ['claude-help', '查看各账号额度'],
-    ['claude-help mail <邮箱>', '复制账号并打开收信页'],
-    ['claude-help sites', '查看收信地址'],
-    ['claude-help sessions', '按账号列出全部会话'],
-    ['claude-help --help', '全部命令，以及给 Claude 的流程说明'],
+    ['claude-help', 'about.cmd.usage'],
+    [t('about.cmdMail'), 'about.cmd.mail'],
+    ['claude-help sites', 'about.cmd.sites'],
+    ['claude-help sessions', 'about.cmd.sessions'],
+    ['claude-help --help', 'about.cmd.help'],
   ];
 
-  var TEXT = {
-    dev: function () { return '开发模式不检查更新'; },
-    checking: function () { return '正在检查更新…'; },
-    latest: function () { return '已是最新版本'; },
-    available: function (i) { return '发现新版本 v' + i.version + '，正在下载'; },
-    downloading: function (i) { return '正在下载新版本 ' + i.percent + '%'; },
-    downloaded: function (i) { return '新版本 v' + i.version + ' 已下载，重启即可安装'; },
-    error: function (i) { return '检查更新失败：' + (i.message || '未知原因'); },
-  };
+  var UPDATE_STATUSES = ['dev', 'checking', 'latest', 'available', 'downloading', 'downloaded', 'error'];
 
   var ready = false;
   var readyVersion = '';
   var locked = false;
-  var btn, textEl, progress, closeEl;
+  var btn, textEl, progress, closeEl, langEl;
 
   // 安装更新期间整个界面不可操作：主体和提示条设为 inert，盖上遮罩
   function lockForInstall(version) {
     locked = true;
     document.querySelector('.shell').inert = true;
     document.getElementById('toasts').inert = true;
-    document.getElementById('installTitle').textContent = '正在安装更新 v' + version;
+    document.getElementById('installTitle').textContent = t('install.titleVersion', { version: version });
     document.getElementById('installOverlay').hidden = false;
   }
 
@@ -42,10 +35,15 @@
     document.getElementById('installOverlay').hidden = true;
   }
 
-  function showSettings(s) {
-    [].forEach.call(closeEl.querySelectorAll('button'), function (b) {
-      b.setAttribute('aria-checked', String(b.dataset.value === s.closeAction));
+  function checkRadios(group, value) {
+    [].forEach.call(group.querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-checked', String(b.dataset.value === value));
     });
+  }
+
+  function showSettings(s) {
+    checkRadios(closeEl, s.closeAction);
+    checkRadios(langEl, s.language);
   }
 
   function setButton(label, iconName, variant) {
@@ -56,7 +54,8 @@
 
   // 由 app.js 转发主进程的更新事件
   function update(info) {
-    textEl.textContent = (TEXT[info.status] || function () { return ''; })(info);
+    textEl.textContent = UPDATE_STATUSES.indexOf(info.status) < 0 ? ''
+      : t('about.update.' + info.status, { version: info.version, percent: info.percent, message: info.message || t('about.update.unknown') });
     textEl.title = info.message || '';
     progress.hidden = info.status !== 'downloading';
     if (info.status === 'downloading') progress.firstElementChild.style.width = info.percent + '%';
@@ -64,8 +63,8 @@
     if (ready) readyVersion = info.version;
     if (info.status === 'error' && locked) unlock();
     btn.disabled = info.status === 'checking' || info.status === 'downloading';
-    if (ready) setButton('重启并安装', 'refresh', 'primary');
-    else setButton('检查更新', 'refresh');
+    if (ready) setButton(t('about.restartInstall'), 'refresh', 'primary');
+    else setButton(t('about.check'), 'refresh');
   }
 
   function init() {
@@ -78,7 +77,7 @@
       lockForInstall(readyVersion);
       api.installUpdate().catch(function (e) {
         unlock();
-        UI.toast('error', '安装失败：' + UI.errText(e));
+        UI.toast('error', t('about.installFailed', { err: UI.errText(e) }));
       });
     });
 
@@ -91,25 +90,36 @@
       if (!b) return;
       api.setSetting('closeAction', b.dataset.value).then(function (s) {
         showSettings(s);
-        UI.toast('success', '已保存：关闭窗口时' + b.textContent);
-      }, function (err) { UI.toast('error', '保存失败：' + UI.errText(err)); });
+        UI.toast('success', t('about.closeSaved', { label: b.textContent }));
+      }, function (err) { UI.toast('error', t('common.saveFailed', { err: UI.errText(err) })); });
     });
+
+    // 语言：保存后主进程更新托盘菜单并重新加载页面
+    langEl = document.getElementById('language');
+    langEl.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-value]');
+      if (!b || b.getAttribute('aria-checked') === 'true') return;
+      api.setSetting('language', b.dataset.value).catch(function (err) {
+        UI.toast('error', t('common.saveFailed', { err: UI.errText(err) }));
+      });
+    });
+
     api.getSettings().then(showSettings);
     api.onSettings(showSettings);
 
     var list = document.getElementById('cmdList');
     COMMANDS.forEach(function (c) {
       var li = UI.el('li');
-      var copy = UI.button({ label: '复制命令', icon: 'copy', variant: 'icon', onClick: function () {
-        api.copy(c[0]).then(function () { UI.flashButton(copy, '', 'check'); UI.toast('success', '已复制：' + c[0]); });
+      var copy = UI.button({ label: t('about.copyCommand'), icon: 'copy', variant: 'icon', onClick: function () {
+        api.copy(c[0]).then(function () { UI.flashButton(copy, '', 'check'); UI.toast('success', t('about.copiedCommand', { cmd: c[0] })); });
       } });
-      li.append(UI.el('code', null, c[0]), UI.el('span', 'cmd-desc', c[1]), copy);
+      li.append(UI.el('code', null, c[0]), UI.el('span', 'cmd-desc', t(c[1])), copy);
       list.appendChild(li);
     });
 
     api.dataDir().then(function (d) { document.getElementById('dataDir').textContent = d; });
     document.getElementById('openDataDir').addEventListener('click', function () {
-      api.openDataDir().catch(function (e) { UI.toast('error', '打开文件夹失败：' + UI.errText(e)); });
+      api.openDataDir().catch(function (e) { UI.toast('error', t('about.openDirFailed', { err: UI.errText(e) })); });
     });
   }
 

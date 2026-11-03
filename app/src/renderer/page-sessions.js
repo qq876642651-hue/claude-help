@@ -3,6 +3,7 @@
   var api = window.claudeHelp;
   var fmt = window.UsageFormat;
   var UI = window.UI;
+  var t = UI.t;
 
   var groups = [];
   var query = '';
@@ -39,7 +40,7 @@
     head.setAttribute('aria-expanded', String(open));
     var name = UI.el('span', 'project-name', baseName(p.cwd));
     head.append(UI.icon('chevron'), UI.icon('folder'), name,
-      UI.el('span', 'muted', p.sessions.length + ' 个 · ' + fmt.ago(p.sessions[0].lastActivityAt, now)));
+      UI.el('span', 'muted', t('sessions.projectMeta', { n: p.sessions.length, ago: fmt.ago(p.sessions[0].lastActivityAt, now) })));
     head.addEventListener('click', function () {
       var i = collapsed.indexOf(key);
       if (i >= 0) collapsed.splice(i, 1);
@@ -53,21 +54,20 @@
   function copyResume(s, btn) {
     api.copyResume(s.id).then(function (r) {
       UI.flashButton(btn, '', 'check');
-      UI.toast('success', '已复制。在 Claude 桌面端用 ' + r.cwd + ' 新建会话后粘贴');
+      UI.toast('success', t('sessions.copiedResume', { cwd: r.cwd }));
     }, function (e) {
-      UI.toast('error', '复制失败：' + UI.errText(e));
+      UI.toast('error', t('common.copyFailed', { err: UI.errText(e) }));
     });
   }
 
   function trash(s) {
-    UI.confirm('删除会话「' + s.title + '」？会话列表文件和对话记录会移到回收站，可以从回收站还原。'
-      + '当前登录账号的会话最好在桌面端里删，正在运行的会话可能被桌面端重新写回。', '删除').then(function (ok) {
+    UI.confirm(t('sessions.trashConfirm', { title: s.title }), t('common.delete')).then(function (ok) {
       if (!ok) return;
       api.trashSession(s.id).then(function (r) {
-        UI.toast('success', '已把「' + r.title + '」移到回收站');
+        UI.toast('success', t('sessions.trashed', { title: r.title }));
         load();
       }, function (e) {
-        UI.toast('error', '删除失败：' + UI.errText(e));
+        UI.toast('error', t('common.deleteFailed', { err: UI.errText(e) }));
       });
     });
   }
@@ -76,18 +76,18 @@
     var r = UI.el('div', 'session-row' + (s.archived ? ' archived' : ''));
     var title = UI.el('span', 'session-title', s.title);
     title.title = s.title + '\n' + s.cwd;
-    if (s.archived) title.appendChild(UI.el('span', 'tag', '已归档'));
+    if (s.archived) title.appendChild(UI.el('span', 'tag', t('sessions.archived')));
     var meta = UI.el('span', 'session-meta', fmt.ago(s.lastActivityAt, now));
-    meta.title = '最后活动：' + new Date(s.lastActivityAt).toLocaleString('zh-CN');
+    meta.title = t('sessions.lastActive', { time: new Date(s.lastActivityAt).toLocaleString(t.locale) });
 
     var actions = UI.el('div', 'site-actions');
     if (s.transcript) {
-      var copy = UI.button({ label: '复制续接指令', icon: 'copy', variant: 'icon', onClick: function () { copyResume(s, copy); } });
+      var copy = UI.button({ label: t('sessions.copyResume'), icon: 'copy', variant: 'icon', onClick: function () { copyResume(s, copy); } });
       actions.appendChild(copy);
     } else {
-      actions.appendChild(UI.el('span', 'session-missing', '对话记录已不在'));
+      actions.appendChild(UI.el('span', 'session-missing', t('sessions.noTranscript')));
     }
-    var del = UI.button({ label: '删除（移到回收站）', icon: 'trash', variant: 'icon', onClick: function () { trash(s); } });
+    var del = UI.button({ label: t('sessions.trash'), icon: 'trash', variant: 'icon', onClick: function () { trash(s); } });
     del.classList.add('danger-hover');
     actions.appendChild(del);
 
@@ -99,8 +99,8 @@
     var now = Date.now();
     var total = groups.reduce(function (n, g) { return n + g.sessions.length; }, 0);
     summaryEl.textContent = groups.length
-      ? groups.length + ' 个账号 · ' + total + ' 个会话 · 切换账号后桌面端只显示当前账号的会话'
-      : '没有找到会话';
+      ? t('sessions.summary', { accounts: groups.length, sessions: total })
+      : t('sessions.none');
 
     var q = query.trim().toLowerCase();
     var match = function (s) { return !q || (s.title + ' ' + baseName(s.cwd)).toLowerCase().indexOf(q) >= 0; };
@@ -113,9 +113,9 @@
       shown += list.length;
       var box = UI.el('section', 'session-group');
       var head = UI.el('div', 'session-group-head');
-      var name = UI.el('h2', null, g.email || '账号 ' + g.accountId.slice(0, 8));
-      name.title = '账号 ID：' + g.accountId;
-      head.append(name, UI.el('span', 'muted', list.length + ' 个' + (g.email ? '' : ' · 还没对应邮箱，在这个账号里记录一次额度即可')));
+      var name = UI.el('h2', null, g.email || t('sessions.account', { id: g.accountId.slice(0, 8) }));
+      name.title = t('sessions.accountId', { id: g.accountId });
+      head.append(name, UI.el('span', 'muted', t('sessions.count', { n: list.length }) + (g.email ? '' : t('sessions.noEmail'))));
       var panel = UI.el('div', 'panel session-list');
       byProject(list).forEach(function (p) {
         var pr = projectRow(g.accountId, p, now, Boolean(q));
@@ -125,7 +125,7 @@
       box.append(head, panel);
       listEl.appendChild(box);
     });
-    if (groups.length && !shown) listEl.appendChild(UI.el('div', 'list-empty', '没有匹配“' + query.trim() + '”的会话'));
+    if (groups.length && !shown) listEl.appendChild(UI.el('div', 'list-empty', t('sessions.noMatch', { q: query.trim() })));
   }
 
   function load() {
@@ -133,7 +133,7 @@
       groups = data || [];
       render();
     }, function (e) {
-      UI.toast('error', '读取会话失败：' + UI.errText(e));
+      UI.toast('error', t('sessions.loadFailed', { err: UI.errText(e) }));
     });
   }
 

@@ -19,7 +19,11 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
     - 删除只在软件里做，用 `shell.trashItem` 移到回收站。
     - 测试时用 `CLAUDE_HELP_SESSIONS_DIR` 指向假的会话目录，用 `CLAUDE_CONFIG_DIR` 指定 `.claude` 目录。
   - `mailSites.js`：邮箱后缀 → 收信网址。默认只有 `poczta.onet.pl → https://onet.yulishomes.com/`；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
-  - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。
+  - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。默认中文，软件按界面语言调用 `setLang('en')`。
+- `app/src/i18n.js`：软件界面的中英文字表（UMD），主进程和页面共用。CLI 和 core 里的报错、续接指令保持中文。
+  - 语言设置 `language`：`system`（默认，系统语言是中文就用中文，否则英文）/`zh`/`en`，在「关于」页切换。
+  - preload 用 `sendSync('app:lang')` 同步拿到 `zh` 或 `en`。切换后主进程更新托盘菜单，并用 `webContents.reload()` 重新加载页面（页面里的 `location.reload()` 会被 `will-navigate` 拦下）。
+  - 页面静态文字用 `data-i18n`、`data-i18n-placeholder`、`data-i18n-title`、`data-i18n-aria` 标 key，脚本里用 `UI.t(key, vars)`。新增文字时中英两份都要加。
 - `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`usage add`、`usage remove`、`mail`、`sites`、`sessions`、`sessions resume`。用法和“给 Claude 的说明”都在 `--help` 里。
   - 安装后由安装目录里的 `claude-help.cmd`（源文件 `app/build/claude-help.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
   - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
@@ -35,7 +39,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - 测试时用 `CLAUDE_HELP_CLOSE_ANSWER`（`tray`/`quit`/`cancel`，可加 `-remember`）跳过关闭弹窗。
 - `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分四个页面：「额度」「收信地址」「会话」「关于」，`Ctrl+1/2/3/4` 切换。
   - `app.js`：路由。
-  - `ui.js`：图标、按钮、提示条、确认框。
+  - `ui.js`：界面文字（`t`、`applyI18n`）、图标、按钮、提示条、确认框。
   - `page-*.js`：各页面。
   - `style.css`：设计变量，跟随系统深浅色。
   - 「收信」先复制账号；邮箱后缀没配置网址时，跳到「收信地址」页并预填后缀。

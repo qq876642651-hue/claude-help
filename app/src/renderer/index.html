@@ -8,22 +8,22 @@
 </head>
 <body>
 <div class="shell">
-  <nav class="nav" aria-label="页面">
+  <nav class="nav" data-i18n-aria="nav.aria">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#d97757"/><circle cx="50" cy="50" r="31" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="9"/><circle cx="50" cy="50" r="31" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-dasharray="136 195" transform="rotate(-90 50 50)"/><path d="M50 36V64M36 50H64M40.1 40.1L59.9 59.9M59.9 40.1L40.1 59.9" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg></span>
       <span class="brand-name">Claude Help</span>
     </div>
-    <button class="nav-item" type="button" data-page="usage" title="额度（Ctrl+1）">
-      <span class="icon" data-icon="gauge"></span><span>额度</span>
+    <button class="nav-item" type="button" data-page="usage">
+      <span class="icon" data-icon="gauge"></span><span data-i18n="nav.usage"></span>
     </button>
-    <button class="nav-item" type="button" data-page="sites" title="收信地址（Ctrl+2）">
-      <span class="icon" data-icon="link"></span><span>收信地址</span>
+    <button class="nav-item" type="button" data-page="sites">
+      <span class="icon" data-icon="link"></span><span data-i18n="nav.sites"></span>
     </button>
-    <button class="nav-item" type="button" data-page="sessions" title="会话（Ctrl+3）">
-      <span class="icon" data-icon="history"></span><span>会话</span>
+    <button class="nav-item" type="button" data-page="sessions">
+      <span class="icon" data-icon="history"></span><span data-i18n="nav.sessions"></span>
     </button>
-    <button class="nav-item" type="button" data-page="about" title="关于（Ctrl+4）">
-      <span class="icon" data-icon="info"></span><span>关于</span>
+    <button class="nav-item" type="button" data-page="about">
+      <span class="icon" data-icon="info"></span><span data-i18n="nav.about"></span>
       <i class="nav-dot" id="updateDot" hidden></i>
     </button>
     <div class="nav-foot">v<span id="navVersion"></span></div>
@@ -34,20 +34,20 @@
     <section class="page" id="page-usage" hidden>
       <header class="page-head">
         <div class="page-title">
-          <h1>额度</h1>
+          <h1 data-i18n="nav.usage"></h1>
           <p class="sub" id="usageSummary"></p>
         </div>
         <div class="toolbar">
           <label class="search">
             <span class="icon" data-icon="search"></span>
-            <input id="usageSearch" type="search" placeholder="筛选邮箱" autocomplete="off" spellcheck="false">
+            <input id="usageSearch" type="search" data-i18n-placeholder="usage.search" autocomplete="off" spellcheck="false">
           </label>
-          <div class="segmented" id="usageSort" role="radiogroup" aria-label="排序">
-            <button type="button" role="radio" data-sort="weekly">每周剩余</button>
-            <button type="button" role="radio" data-sort="fiveHour">5 小时剩余</button>
-            <button type="button" role="radio" data-sort="recorded">最近记录</button>
+          <div class="segmented" id="usageSort" role="radiogroup" data-i18n-aria="usage.sortAria">
+            <button type="button" role="radio" data-sort="weekly" data-i18n="usage.sortWeekly"></button>
+            <button type="button" role="radio" data-sort="fiveHour" data-i18n="usage.sortFiveHour"></button>
+            <button type="button" role="radio" data-sort="recorded" data-i18n="usage.sortRecorded"></button>
           </div>
-          <button class="btn" type="button" id="usageAdd"><span class="icon" data-icon="plus"></span><span>添加账号</span></button>
+          <button class="btn" type="button" id="usageAdd"><span class="icon" data-icon="plus"></span><span data-i18n="usage.add"></span></button>
         </div>
       </header>
       <div class="page-body">
@@ -59,26 +59,26 @@
     <section class="page" id="page-sites" hidden>
       <header class="page-head">
         <div class="page-title">
-          <h1>收信地址</h1>
-          <p class="sub">点卡片上的「收信」时，按邮箱后缀在默认浏览器打开对应网址。邮箱域名等于后缀、或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。</p>
+          <h1 data-i18n="nav.sites"></h1>
+          <p class="sub" data-i18n="sites.sub"></p>
         </div>
         <div class="toolbar">
-          <button class="btn ghost" type="button" id="sitesReset"><span class="icon" data-icon="refresh"></span><span>恢复默认</span></button>
+          <button class="btn ghost" type="button" id="sitesReset"><span class="icon" data-icon="refresh"></span><span data-i18n="sites.reset"></span></button>
         </div>
       </header>
       <div class="page-body narrow">
         <form class="panel site-form" id="siteForm" novalidate>
           <label class="field">
-            <span class="field-label">邮箱后缀</span>
-            <input id="siteDomain" placeholder="例如 poczta.onet.pl" autocomplete="off" spellcheck="false">
+            <span class="field-label" data-i18n="sites.domain"></span>
+            <input id="siteDomain" data-i18n-placeholder="sites.domainPlaceholder" autocomplete="off" spellcheck="false">
             <em class="field-hint" id="siteDomainHint"></em>
           </label>
           <label class="field grow">
-            <span class="field-label">收信网址</span>
+            <span class="field-label" data-i18n="sites.url"></span>
             <input id="siteUrl" placeholder="https://" autocomplete="off" spellcheck="false">
             <em class="field-hint" id="siteUrlHint"></em>
           </label>
-          <button class="btn primary" type="submit"><span class="icon" data-icon="plus"></span><span>添加</span></button>
+          <button class="btn primary" type="submit"><span class="icon" data-icon="plus"></span><span data-i18n="common.add"></span></button>
         </form>
         <div class="panel site-list" id="siteList"></div>
       </div>
@@ -88,13 +88,13 @@
     <section class="page" id="page-sessions" hidden>
       <header class="page-head">
         <div class="page-title">
-          <h1>会话</h1>
+          <h1 data-i18n="nav.sessions"></h1>
           <p class="sub" id="sessionsSummary"></p>
         </div>
         <div class="toolbar">
           <label class="search">
             <span class="icon" data-icon="search"></span>
-            <input id="sessionsSearch" type="search" placeholder="筛选标题或项目" autocomplete="off" spellcheck="false">
+            <input id="sessionsSearch" type="search" data-i18n-placeholder="sessions.search" autocomplete="off" spellcheck="false">
           </label>
         </div>
       </header>
@@ -105,8 +105,8 @@
     <section class="page" id="page-about" hidden>
       <header class="page-head">
         <div class="page-title">
-          <h1>关于</h1>
-          <p class="sub">额度由 Claude 在桌面端读取后交给命令行写入，本软件只负责读取和显示。</p>
+          <h1 data-i18n="nav.about"></h1>
+          <p class="sub" data-i18n="about.sub"></p>
         </div>
       </header>
       <div class="page-body narrow">
@@ -114,9 +114,9 @@
           <div class="panel-head">
             <div>
               <h2>Claude Help <span class="muted" id="aboutVersion"></span></h2>
-              <p class="sub" id="updateText">自动检查更新</p>
+              <p class="sub" id="updateText" data-i18n="about.updateAuto"></p>
             </div>
-            <button class="btn" type="button" id="updateBtn"><span class="icon" data-icon="refresh"></span><span>检查更新</span></button>
+            <button class="btn" type="button" id="updateBtn"><span class="icon" data-icon="refresh"></span><span data-i18n="about.check"></span></button>
           </div>
           <div class="progress" id="updateProgress" hidden><span></span></div>
         </div>
@@ -124,13 +124,13 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2>关闭窗口时</h2>
-              <p class="sub">回到后台后，软件留在系统托盘，额度记录后照常刷新；从托盘图标右键退出。</p>
+              <h2 data-i18n="about.closeTitle"></h2>
+              <p class="sub" data-i18n="about.closeSub"></p>
             </div>
-            <div class="segmented" id="closeAction" role="radiogroup" aria-label="关闭窗口时">
-              <button type="button" role="radio" data-value="ask">每次询问</button>
-              <button type="button" role="radio" data-value="tray">回到后台</button>
-              <button type="button" role="radio" data-value="quit">直接退出</button>
+            <div class="segmented" id="closeAction" role="radiogroup" data-i18n-aria="about.closeTitle">
+              <button type="button" role="radio" data-value="ask" data-i18n="about.closeAsk"></button>
+              <button type="button" role="radio" data-value="tray" data-i18n="about.closeTray"></button>
+              <button type="button" role="radio" data-value="quit" data-i18n="about.closeQuit"></button>
             </div>
           </div>
         </div>
@@ -138,8 +138,22 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2>命令行 claude-help</h2>
-              <p class="sub">已随软件安装并加入 PATH，新开一个终端即可使用。</p>
+              <h2 data-i18n="about.langTitle"></h2>
+              <p class="sub" data-i18n="about.langSub"></p>
+            </div>
+            <div class="segmented" id="language" role="radiogroup" data-i18n-aria="about.langTitle">
+              <button type="button" role="radio" data-value="system" data-i18n="about.langSystem"></button>
+              <button type="button" role="radio" data-value="zh" lang="zh-CN">中文</button>
+              <button type="button" role="radio" data-value="en" lang="en">English</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 data-i18n="about.cliTitle"></h2>
+              <p class="sub" data-i18n="about.cliSub"></p>
             </div>
           </div>
           <ul class="cmd-list" id="cmdList"></ul>
@@ -148,10 +162,10 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2>数据位置</h2>
+              <h2 data-i18n="about.dataTitle"></h2>
               <p class="sub mono" id="dataDir"></p>
             </div>
-            <button class="btn" type="button" id="openDataDir"><span class="icon" data-icon="folder"></span><span>打开文件夹</span></button>
+            <button class="btn" type="button" id="openDataDir"><span class="icon" data-icon="folder"></span><span data-i18n="about.openDir"></span></button>
           </div>
         </div>
       </div>
@@ -165,36 +179,36 @@
 <div class="install-overlay" id="installOverlay" hidden>
   <div class="install-card" role="alertdialog" aria-labelledby="installTitle" aria-describedby="installText">
     <span class="spinner" aria-hidden="true"></span>
-    <h2 id="installTitle">正在安装更新</h2>
-    <p class="sub" id="installText">软件会自动退出，安装完成后自动重新打开。</p>
+    <h2 id="installTitle" data-i18n="install.title"></h2>
+    <p class="sub" id="installText" data-i18n="install.text"></p>
   </div>
 </div>
 
 <dialog class="confirm close-dialog" id="closeDialog">
   <form method="dialog">
-    <h2>关闭 Claude Help</h2>
-    <p class="sub">回到后台后，软件留在系统托盘，额度记录后照常刷新。</p>
-    <label class="check"><input type="checkbox" id="closeRemember"><span>以后不再询问（可在「关于」里改回）</span></label>
+    <h2 data-i18n="close.title"></h2>
+    <p class="sub" data-i18n="close.sub"></p>
+    <label class="check"><input type="checkbox" id="closeRemember"><span data-i18n="close.remember"></span></label>
     <div class="confirm-actions">
-      <button class="btn ghost" value="cancel" type="submit">取消</button>
-      <button class="btn" value="quit" type="submit">退出</button>
-      <button class="btn primary" value="tray" type="submit" autofocus>回到后台</button>
+      <button class="btn ghost" value="cancel" type="submit" data-i18n="common.cancel"></button>
+      <button class="btn" value="quit" type="submit" data-i18n="close.quit"></button>
+      <button class="btn primary" value="tray" type="submit" autofocus data-i18n="close.tray"></button>
     </div>
   </form>
 </dialog>
 
 <dialog class="confirm add-dialog" id="addAccountDialog">
   <form method="dialog" id="addAccountForm" novalidate>
-    <h2>添加账号</h2>
+    <h2 data-i18n="add.title"></h2>
     <label class="field">
-      <span class="field-label">邮箱</span>
+      <span class="field-label" data-i18n="add.email"></span>
       <input id="addAccountEmail" type="email" placeholder="name@example.com" autocomplete="off" spellcheck="false">
       <em class="field-hint" id="addAccountHint"></em>
     </label>
-    <p class="sub">额度先空着，在 Claude 里说“记录额度”后补上。</p>
+    <p class="sub" data-i18n="add.sub"></p>
     <div class="confirm-actions">
-      <button class="btn" value="cancel" type="button" id="addAccountCancel">取消</button>
-      <button class="btn primary" type="submit"><span class="icon" data-icon="plus"></span><span>添加</span></button>
+      <button class="btn" value="cancel" type="button" id="addAccountCancel" data-i18n="common.cancel"></button>
+      <button class="btn primary" type="submit"><span class="icon" data-icon="plus"></span><span data-i18n="common.add"></span></button>
     </div>
   </form>
 </dialog>
@@ -203,13 +217,14 @@
   <form method="dialog">
     <p id="confirmText"></p>
     <div class="confirm-actions">
-      <button class="btn" value="cancel" type="submit">取消</button>
-      <button class="btn danger" value="ok" type="submit" id="confirmOk">确定</button>
+      <button class="btn" value="cancel" type="submit" data-i18n="common.cancel"></button>
+      <button class="btn danger" value="ok" type="submit" id="confirmOk" data-i18n="common.ok"></button>
     </div>
   </form>
 </dialog>
 
 <script src="../core/format.js"></script>
+<script src="../i18n.js"></script>
 <script src="ui.js"></script>
 <script src="page-usage.js"></script>
 <script src="page-sites.js"></script>

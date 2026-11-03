@@ -1,5 +1,23 @@
-// 各页面共用的小工具：图标、DOM、按钮、提示条、确认框
+// 各页面共用的小工具：界面文字、图标、DOM、按钮、提示条、确认框
 (function () {
+  // 界面语言由主进程算好（跟随系统 / 中文 / English），切换后整页重新加载
+  var t = window.I18n.create(window.claudeHelp.lang);
+  window.UsageFormat.setLang(t.lang);
+  document.documentElement.lang = t.locale;
+
+  // 静态 HTML 里的文字用 data-i18n（正文）、data-i18n-placeholder、data-i18n-title、data-i18n-aria 标出 key
+  function applyI18n(root) {
+    var attrs = { 'data-i18n-placeholder': 'placeholder', 'data-i18n-title': 'title', 'data-i18n-aria': 'aria-label' };
+    [].forEach.call(root.querySelectorAll('[data-i18n]'), function (node) {
+      node.textContent = t(node.getAttribute('data-i18n'));
+    });
+    Object.keys(attrs).forEach(function (a) {
+      [].forEach.call(root.querySelectorAll('[' + a + ']'), function (node) {
+        node.setAttribute(attrs[a], t(node.getAttribute(a)));
+      });
+    });
+  }
+
   var P = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
   var ICONS = {
     gauge: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/>',
@@ -108,7 +126,7 @@
   function confirm(text, okText) {
     var dialog = document.getElementById('confirmDialog');
     document.getElementById('confirmText').textContent = text;
-    document.getElementById('confirmOk').textContent = okText || '确定';
+    document.getElementById('confirmOk').textContent = okText || t('common.ok');
     dialog.returnValue = '';
     dialog.showModal();
     return new Promise(function (resolve) {
@@ -145,6 +163,8 @@
   }
 
   window.UI = {
+    t: t,
+    applyI18n: applyI18n,
     icon: icon,
     hydrateIcons: hydrateIcons,
     el: el,

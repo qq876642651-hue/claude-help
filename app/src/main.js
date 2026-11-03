@@ -7,6 +7,7 @@ const { readUsage, addAccount, removeUsage, restoreUsage } = require('./core/usa
 const mailSites = require('./core/mailSites');
 const sessions = require('./core/sessions');
 const settings = require('./settings');
+const I18n = require('./i18n');
 
 const ICON = path.join(__dirname, 'assets', 'icon.png');
 
@@ -16,6 +17,11 @@ let quitting = false; // 退出过程中不再拦截关闭
 let asking = false; // 关闭弹窗正在显示
 let trayHinted = false; // 本次运行是否已提示过“仍在后台运行”
 
+// 界面语言：按设置（跟随系统 / 中文 / English）算出 zh 或 en
+function t(key, vars) {
+  return I18n.create(I18n.resolve(settings.get().language, app.getLocale()))(key, vars);
+}
+
 function showWindow() {
   if (!win) return;
   if (win.isMinimized()) win.restore();
@@ -23,15 +29,20 @@ function showWindow() {
   win.focus();
 }
 
+function trayMenu() {
+  if (!tray) return;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: t('tray.open'), click: showWindow },
+    { type: 'separator' },
+    { label: t('tray.quit'), click: () => app.quit() },
+  ]));
+}
+
 function ensureTray() {
   if (tray) return;
   tray = new Tray(ICON);
   tray.setToolTip('Claude Help');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '打开 Claude Help', click: showWindow },
-    { type: 'separator' },
-    { label: '退出', click: () => app.quit() },
-  ]));
+  trayMenu();
   tray.on('click', showWindow);
 }
 
@@ -40,7 +51,7 @@ function hideToTray() {
   win.hide();
   if (!trayHinted) {
     trayHinted = true;
-    tray.displayBalloon({ iconType: 'info', title: 'Claude Help 仍在后台运行', content: '点托盘图标可重新打开，右键可退出。' });
+    tray.displayBalloon({ iconType: 'info', title: t('tray.hintTitle'), content: t('tray.hintText') });
   }
 }
 
@@ -81,14 +92,14 @@ async function askCloseAction() {
 async function nativeAsk() {
   const { response, checkboxChecked } = await dialog.showMessageBox(win, {
     type: 'question',
-    title: '关闭 Claude Help',
-    message: '关闭窗口后，要让 Claude Help 回到后台继续运行，还是直接退出？',
-    detail: '回到后台后，软件留在系统托盘，额度记录后照常刷新。',
-    buttons: ['回到后台', '退出', '取消'],
+    title: t('close.title'),
+    message: t('close.message'),
+    detail: t('close.sub'),
+    buttons: [t('close.tray'), t('close.quit'), t('common.cancel')],
     defaultId: 0,
     cancelId: 2,
     noLink: true,
-    checkboxLabel: '以后不再询问（可在「关于」→「设置」里改回）',
+    checkboxLabel: t('close.remember'),
   });
   return { action: ACTIONS[response], remember: checkboxChecked };
 }
@@ -122,7 +133,7 @@ function sessionGroups() {
 // 只认完整的会话 ID，路径由这里自己找，不用渲染进程传来的
 function exactSession(id) {
   const hit = sessions.findSession(id);
-  if (!hit || hit.data.sessionId !== id) throw new Error('找不到这个会话，可能已经删除');
+  if (!hit || hit.data.sessionId !== id) throw new Error(t('error.sessionNotFound'));
   return hit;
 }
 
@@ -151,7 +162,7 @@ function registerIpc() {
   ipcMain.handle('sessions:get', () => sessionGroups());
   ipcMain.handle('sessions:copyResume', (_e, id) => {
     const s = sessions.toSession(exactSession(id).data);
-    if (!s.transcript) throw new Error('这个会话的对话记录已不在');
+    if (!s.transcript) throw new Error(t('error.noTranscript'));
     clipboard.writeText(sessions.resumePrompt(s));
     return { cwd: s.cwd };
   });
@@ -172,7 +183,7 @@ function registerIpc() {
     return { opened: true, url };
   });
   ipcMain.handle('mail:openSite', (_e, url) => {
-    if (!mailSites.isWebUrl(url)) throw new Error('只能打开 http(s) 网址');
+    if (!mailSites.isWebUrl(url)) throw new Error(t('error.webUrlOnly'));
     return shell.openExternal(url);
   });
   ipcMain.handle('mailSites:get', () => mailSites.readMailSites());
@@ -182,7 +193,18 @@ function registerIpc() {
   ipcMain.handle('mailSites:reset', () => mailSites.resetSites());
 
   ipcMain.handle('settings:get', () => settings.get());
-  ipcMain.handle('settings:set', (_e, key, value) => settings.set(key, value));
+  ipcMain.handle('settings:set', (_e, key, value) => {
+    const next = settings.set(key, value);
+    // 换语言后更新托盘菜单并重新加载页面；页面里的 location.reload() 会被 will-navigate 拦下，所以由这里来做
+    if (key === 'language') {
+      trayMenu();
+      setImmediate(() => { if (win && !win.isDestroyed()) win.webContents.reload(); });
+    }
+    return next;
+  });
+  ipcMain.on('app:lang', (e) => {
+    e.returnValue = I18n.resolve(settings.get().language, app.getLocale());
+  });
 
   ipcMain.handle('dataDir:get', () => DATA_DIR);
   ipcMain.handle('dataDir:open', async () => {
@@ -206,7 +228,7 @@ function setupUpdater() {
   });
   // 静默安装（不弹安装向导、沿用原安装位置），装完自动重启；安装期间关闭窗口不再询问
   ipcMain.handle('update:install', () => {
-    if (!app.isPackaged) throw new Error('开发模式不能安装更新');
+    if (!app.isPackaged) throw new Error(t('error.devInstall'));
     quitting = true;
     autoUpdater.quitAndInstall(true, true);
   });

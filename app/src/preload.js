@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('claudeHelp', {
+  // 界面语言（zh | en），脚本一加载就要用，所以同步取；切换语言后页面重新加载
+  lang: ipcRenderer.sendSync('app:lang'),
   getUsage: () => ipcRenderer.invoke('usage:get'),
   onUsage: (cb) => ipcRenderer.on('usage:changed', (_e, data) => cb(data)),
   addAccount: (email) => ipcRenderer.invoke('usage:add', email),

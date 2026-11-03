@@ -3,8 +3,8 @@ const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULTS = { closeAction: 'ask' };
-const ALLOWED = { closeAction: ['ask', 'tray', 'quit'] };
+const DEFAULTS = { closeAction: 'ask', language: 'system' };
+const ALLOWED = { closeAction: ['ask', 'tray', 'quit'], language: ['system', 'zh', 'en'] };
 
 function file() {
   return path.join(app.getPath('userData'), 'settings.json');

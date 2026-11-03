@@ -144,10 +144,10 @@ input.invalid:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
 .search .icon { position: absolute; left: 10px; color: var(--text-3); pointer-events: none; }
 .search input { width: 200px; padding-left: 32px; }
 
-.segmented { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--track); }
+.segmented { display: inline-flex; flex: none; padding: 3px; border-radius: 10px; background: var(--track); }
 .segmented button {
   height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent;
-  color: var(--text-2); font-size: 13px; cursor: pointer;
+  color: var(--text-2); font-size: 13px; cursor: pointer; white-space: nowrap;
 }
 .segmented button:hover { color: var(--text); }
 .segmented button[aria-checked="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow); }
