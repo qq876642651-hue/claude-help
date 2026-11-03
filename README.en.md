@@ -11,7 +11,7 @@
 
 ---
 
-Claude Help is a Windows desktop app (Electron) with a companion command-line tool, `claude-help`. It's built for people who switch between several Claude accounts in the Claude desktop app:
+Claude Help is a Windows desktop app (Electron) with a companion command-line tool, `cchelp`. It's built for people who switch between several Claude accounts in the Claude desktop app:
 
 - See how much of each account's limit is left and when it resets, at a glance.
 - Copy an account's address and open its webmail in one click.
@@ -59,7 +59,7 @@ The app checks this repository's GitHub Releases, downloads new versions in the 
 
 1. Open [Releases](https://github.com/qq876642651-hue/claude-help/releases/latest) and download `Claude-Help-Setup-<version>.exe`.
 2. Run the installer; you can choose where to install. The installer isn't code-signed, so Windows may warn about an unknown publisher.
-3. The installer adds the install folder to your user PATH. Open a **new** terminal to use `claude-help`.
+3. The installer adds the install folder to your user PATH. Open a **new** terminal to use `cchelp`.
 
 Windows only.
 
@@ -69,9 +69,9 @@ Windows only.
 
 Only Claude, inside a desktop-app session, can read usage limits; Claude Help can't read them on its own. To record usage, say this to Claude in the desktop app:
 
-> 记录额度 (record usage)
+> 用 cchelp 记录额度 (record usage with cchelp)
 
-Claude reads the current account's usage and session ID and passes them to `claude-help usage record`, and the app refreshes. The exact steps are in the "给 Claude 的说明" (notes for Claude) section of `claude-help --help`, which Claude follows.
+Claude reads the current account's usage and session ID and passes them to `cchelp usage record`, and the app refreshes. The exact steps are in the "给 Claude 的说明" (notes for Claude) section of `cchelp --help`, which Claude follows.
 
 Record once in each account while it's signed in.
 
@@ -79,15 +79,15 @@ Record once in each account while it's signed in.
 
 | Command | What it does |
 |---|---|
-| `claude-help` | Show usage for each account, sorted by weekly remaining by default; `--sort weekly\|5h\|recorded`, `--json` |
-| `claude-help usage record --email <email> [--session <session ID>] [--file <file>]` | Record one account's usage (plan JSON from stdin or a file); normally run by Claude |
-| `claude-help usage remove <email>` | Delete one account's usage record |
-| `claude-help mail <email> [--print]` | Copy the address and open its webmail URL in the default browser; `--print` only prints the URL |
-| `claude-help sites` | List webmail addresses |
-| `claude-help sites add <suffix> <url>` / `remove <suffix>` / `reset` | Add or remove a webmail address, or restore the defaults |
-| `claude-help sessions [--json]` | List every session by account and project |
-| `claude-help sessions resume <session ID or prefix>` | Print a resume prompt and copy it to the clipboard |
-| `claude-help --help` / `--version` | Help and version |
+| `cchelp` | Show usage for each account, sorted by weekly remaining by default; `--sort weekly\|5h\|recorded`, `--json` |
+| `cchelp usage record --email <email> [--session <session ID>] [--file <file>]` | Record one account's usage (plan JSON from stdin or a file); normally run by Claude |
+| `cchelp usage remove <email>` | Delete one account's usage record |
+| `cchelp mail <email> [--print]` | Copy the address and open its webmail URL in the default browser; `--print` only prints the URL |
+| `cchelp sites` | List webmail addresses |
+| `cchelp sites add <suffix> <url>` / `remove <suffix>` / `reset` | Add or remove a webmail address, or restore the defaults |
+| `cchelp sessions [--json]` | List every session by account and project |
+| `cchelp sessions resume <session ID or prefix>` | Print a resume prompt and copy it to the clipboard |
+| `cchelp --help` / `--version` | Help and version |
 
 Deleting sessions is only available in the app, not on the command line, to avoid accidents.
 

@@ -1,4 +1,4 @@
-; Put the install dir (holding claude-help.cmd) on the user PATH, and take it off on uninstall.
+; Put the install dir (holding cchelp.cmd) on the user PATH, and take it off on uninstall.
 ; The raw registry value is read and written so %VAR% entries in PATH stay unexpanded.
 
 !macro customInstall

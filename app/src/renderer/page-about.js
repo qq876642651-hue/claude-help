@@ -5,11 +5,11 @@
   var t = UI.t;
 
   var COMMANDS = [
-    ['claude-help', 'about.cmd.usage'],
+    ['cchelp', 'about.cmd.usage'],
     [t('about.cmdMail'), 'about.cmd.mail'],
-    ['claude-help sites', 'about.cmd.sites'],
-    ['claude-help sessions', 'about.cmd.sessions'],
-    ['claude-help --help', 'about.cmd.help'],
+    ['cchelp sites', 'about.cmd.sites'],
+    ['cchelp sessions', 'about.cmd.sessions'],
+    ['cchelp --help', 'about.cmd.help'],
   ];
 
   var UPDATE_STATUSES = ['dev', 'checking', 'latest', 'available', 'downloading', 'downloaded', 'error'];

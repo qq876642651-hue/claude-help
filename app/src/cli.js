@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// claude-help 命令行：安装后由 claude-help.cmd 以 ELECTRON_RUN_AS_NODE 方式运行，开发时可直接 node src/cli.js
+// cchelp 命令行：安装后由 cchelp.cmd 以 ELECTRON_RUN_AS_NODE 方式运行，开发时可直接 node src/cli.js
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -10,27 +10,27 @@ const { USAGE_FILE, MAIL_SITES_FILE } = require('./core/paths');
 const fmt = require('./core/format');
 const { version } = require('../package.json');
 
-const HELP = `claude-help ${version} — Claude 账号额度与收信工具（与 Claude Help 桌面软件共用数据）
+const HELP = `cchelp ${version} — Claude 账号额度与收信工具（与 Claude Help 桌面软件共用数据）
 
 用法：
-  claude-help [usage] [--sort weekly|5h|recorded] [--json]   显示各账号额度（默认按每周剩余排序）
-  claude-help usage record --email <邮箱> [--session <会话ID>] [--file <文件>]
-                                                             记录一个账号的额度（plan JSON 从 stdin 或文件读）；
-                                                             --session 用来找出桌面端账号 ID，把会话对应到邮箱
-  claude-help usage add <邮箱>                               添加一个账号，额度先空着，以后记录额度时补上
-  claude-help usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址）
-  claude-help mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
-  claude-help sites                                          列出“邮箱后缀 → 收信网址”
-  claude-help sites add <后缀> <网址> | remove <后缀> | reset
+  cchelp [usage] [--sort weekly|5h|recorded] [--json]   显示各账号额度（默认按每周剩余排序）
+  cchelp usage record --email <邮箱> [--session <会话ID>] [--file <文件>]
+                                                        记录一个账号的额度（plan JSON 从 stdin 或文件读）；
+                                                        --session 用来找出桌面端账号 ID，把会话对应到邮箱
+  cchelp usage add <邮箱>                               添加一个账号，额度先空着，以后记录额度时补上
+  cchelp usage remove <邮箱>                            删除一个账号的额度记录（不影响收信地址）
+  cchelp mail <邮箱> [--print]                          复制账号，并用默认浏览器打开对应的收信网址
+  cchelp sites                                          列出“邮箱后缀 → 收信网址”
+  cchelp sites add <后缀> <网址> | remove <后缀> | reset
     匹配规则：邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀；默认只有 poczta.onet.pl
-  claude-help sessions [--json]                              按账号列出桌面端的全部会话（切换账号后桌面端只显示当前账号的）
-  claude-help sessions resume <会话ID或前缀>                  打印并复制续接指令：在当前账号新建会话后粘贴，接着旧会话做
-  claude-help --version | --help
+  cchelp sessions [--json]                              按账号列出桌面端的全部会话（切换账号后桌面端只显示当前账号的）
+  cchelp sessions resume <会话ID或前缀>                  打印并复制续接指令：在当前账号新建会话后粘贴，接着旧会话做
+  cchelp --version | --help
 
 给 Claude 的说明（额度只有你在 Claude 桌面端会话里能读，本工具只负责存数据）：
   记录额度：调用 mcp__ccd_session_mgmt__get_usage；plan.status 为 ok 时，再调用
     mcp__ccd_session_mgmt__get_session（session_id 填 "self"），把 plan 对象的 JSON 通过 stdin 交给
-    claude-help usage record --email <会话上下文里的用户邮箱> --session <get_session 返回的 sessionId>。
+    cchelp usage record --email <会话上下文里的用户邮箱> --session <get_session 返回的 sessionId>。
     不要读 ~/.claude.json 里的邮箱。
 
 数据文件：
@@ -97,7 +97,7 @@ function showUsage(flags) {
 
   if (flags.json) return printJson(accounts);
   if (!accounts.length) {
-    console.log('还没有记录。在 Claude 桌面端里说“记录额度”，Claude 会读额度并交给 claude-help usage record。');
+    console.log('还没有记录。在 Claude 桌面端里说“用 cchelp 记录额度”，Claude 会读额度并交给 cchelp usage record。');
     return;
   }
   for (const acc of accounts) {
@@ -130,13 +130,13 @@ function usageRecord(flags) {
 }
 
 function usageAdd(email) {
-  if (!email) throw new UsageError('用法：claude-help usage add <邮箱>');
+  if (!email) throw new UsageError('用法：cchelp usage add <邮箱>');
   const { record, count } = addAccount(email);
-  console.log(`已添加 ${record.email}（额度为空，在 Claude 里说“记录额度”后补上）。共 ${count} 个账号。`);
+  console.log(`已添加 ${record.email}（额度为空，在 Claude 里说“用 cchelp 记录额度”后补上）。共 ${count} 个账号。`);
 }
 
 function usageRemove(email) {
-  if (!email) throw new UsageError('用法：claude-help usage remove <邮箱>');
+  if (!email) throw new UsageError('用法：cchelp usage remove <邮箱>');
   const { removed, count } = removeUsage(email);
   console.log(`已删除 ${removed.email} 的额度记录，还剩 ${count} 个账号。`);
 }
@@ -154,7 +154,7 @@ function openUrl(url) {
 }
 
 function mail(email, flags) {
-  if (!email || !email.includes('@')) throw new UsageError('用法：claude-help mail <邮箱>');
+  if (!email || !email.includes('@')) throw new UsageError('用法：cchelp mail <邮箱>');
   const url = mailUrlFor(email);
   if (flags.print) {
     console.log(url || '');
@@ -163,7 +163,7 @@ function mail(email, flags) {
   }
   const copied = copyToClipboard(email);
   if (!url) {
-    console.log(`${copied ? '已复制' : '复制失败：'} ${email}；后缀 ${email.split('@')[1]} 还没配置收信地址，可运行 claude-help sites add <后缀> <网址>`);
+    console.log(`${copied ? '已复制' : '复制失败：'} ${email}；后缀 ${email.split('@')[1]} 还没配置收信地址，可运行 cchelp sites add <后缀> <网址>`);
     process.exitCode = 2;
     return;
   }
@@ -178,12 +178,12 @@ function sites(args) {
   let list;
   if (!sub || sub === 'list') list = readMailSites();
   else if (sub === 'add') {
-    if (!a || !b) throw new UsageError('用法：claude-help sites add <后缀> <网址>');
+    if (!a || !b) throw new UsageError('用法：cchelp sites add <后缀> <网址>');
     list = addSite(a, b);
     console.log(`已保存：${a} → ${b}`);
     return;
   } else if (sub === 'remove') {
-    if (!a) throw new UsageError('用法：claude-help sites remove <后缀>');
+    if (!a) throw new UsageError('用法：cchelp sites remove <后缀>');
     removeSite(a);
     console.log(`已删除：${a}`);
     return;
@@ -192,7 +192,7 @@ function sites(args) {
     console.log('已恢复默认收信地址');
     return;
   } else throw new UsageError(`未知子命令 sites ${sub}`);
-  if (!list.length) console.log('还没有收信地址，运行 claude-help sites add <后缀> <网址> 添加');
+  if (!list.length) console.log('还没有收信地址，运行 cchelp sites add <后缀> <网址> 添加');
   for (const s of list) console.log(`${s.domain.padEnd(20)} ${s.url}`);
 }
 
@@ -206,9 +206,9 @@ function accountName(accountId, accounts) {
 function sessions(args, flags) {
   const [sub, id] = args;
   if (sub === 'resume') {
-    if (!id) throw new UsageError('用法：claude-help sessions resume <会话ID或前缀>');
+    if (!id) throw new UsageError('用法：cchelp sessions resume <会话ID或前缀>');
     const hit = findSession(id);
-    if (!hit) throw new UsageError(`没找到会话 ${id}，运行 claude-help sessions 查看`);
+    if (!hit) throw new UsageError(`没找到会话 ${id}，运行 cchelp sessions 查看`);
     const s = toSession(hit.data);
     if (!s.transcript) throw new UsageError(`会话「${s.title}」的对话记录已不在，没法续接`);
     const text = resumePrompt(s);
@@ -247,7 +247,7 @@ function sessions(args, flags) {
     }
     console.log('');
   }
-  console.log('续接某个会话：claude-help sessions resume <前 8 位 ID>');
+  console.log('续接某个会话：cchelp sessions resume <前 8 位 ID>');
 }
 
 function main(argv) {
@@ -266,7 +266,7 @@ function main(argv) {
   if (cmd === 'mail') return mail(rest[0], flags);
   if (cmd === 'sites') return sites(rest);
   if (cmd === 'sessions') return sessions(rest, flags);
-  throw new UsageError(`未知命令 ${cmd}，运行 claude-help --help 查看用法`);
+  throw new UsageError(`未知命令 ${cmd}，运行 cchelp --help 查看用法`);
 }
 
 try {

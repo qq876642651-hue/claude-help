@@ -11,7 +11,7 @@
 
 ---
 
-Claude Help 是一个 Windows 桌面软件（Electron），附带命令行工具 `claude-help`。它适合在多个 Claude 账号之间切换使用 Claude 桌面端的人：
+Claude Help 是一个 Windows 桌面软件（Electron），附带命令行工具 `cchelp`。它适合在多个 Claude 账号之间切换使用 Claude 桌面端的人：
 
 - 每个账号还剩多少额度、什么时候重置，一眼看到。
 - 一键复制账号并打开对应的收信网页。
@@ -57,7 +57,7 @@ Claude 桌面端按账号分开存放会话列表，切换账号后只显示当�
 
 1. 打开 [Releases](https://github.com/qq876642651-hue/claude-help/releases/latest)，下载 `Claude-Help-Setup-<版本>.exe`。
 2. 运行安装程序，可以自选安装位置。安装程序没有代码签名，Windows 可能会提示“未知发布者”。
-3. 安装程序会把安装目录加进用户 PATH，**新开**一个终端就能使用 `claude-help`。
+3. 安装程序会把安装目录加进用户 PATH，**新开**一个终端就能使用 `cchelp`。
 
 只支持 Windows。
 
@@ -67,9 +67,9 @@ Claude 桌面端按账号分开存放会话列表，切换账号后只显示当�
 
 额度只有 Claude 在桌面端会话里能读到，Claude Help 自己读不到。所以记录额度的方式是：在 Claude 桌面端对 Claude 说
 
-> 记录额度
+> 用 cchelp 记录额度
 
-Claude 会读取当前账号的额度和会话 ID，交给 `claude-help usage record` 保存，软件随即刷新。具体流程写在 `claude-help --help` 的“给 Claude 的说明”里，Claude 会照着做。
+Claude 会读取当前账号的额度和会话 ID，交给 `cchelp usage record` 保存，软件随即刷新。具体流程写在 `cchelp --help` 的“给 Claude 的说明”里，Claude 会照着做。
 
 每个账号需要在登录状态下各记录一次。
 
@@ -77,15 +77,15 @@ Claude 会读取当前账号的额度和会话 ID，交给 `claude-help usage re
 
 | 命令 | 作用 |
 |---|---|
-| `claude-help` | 显示各账号额度，默认按每周剩余排序；`--sort weekly\|5h\|recorded`，`--json` |
-| `claude-help usage record --email <邮箱> [--session <会话ID>] [--file <文件>]` | 记录一个账号的额度（plan JSON 从 stdin 或文件读入），一般由 Claude 调用 |
-| `claude-help usage remove <邮箱>` | 删除一个账号的额度记录 |
-| `claude-help mail <邮箱> [--print]` | 复制账号并用默认浏览器打开收信网址；`--print` 只打印网址 |
-| `claude-help sites` | 列出收信地址 |
-| `claude-help sites add <后缀> <网址>` / `remove <后缀>` / `reset` | 添加、删除收信地址，或恢复默认 |
-| `claude-help sessions [--json]` | 按账号和项目列出全部会话 |
-| `claude-help sessions resume <会话ID或前缀>` | 打印续接指令并复制到剪贴板 |
-| `claude-help --help` / `--version` | 帮助和版本 |
+| `cchelp` | 显示各账号额度，默认按每周剩余排序；`--sort weekly\|5h\|recorded`，`--json` |
+| `cchelp usage record --email <邮箱> [--session <会话ID>] [--file <文件>]` | 记录一个账号的额度（plan JSON 从 stdin 或文件读入），一般由 Claude 调用 |
+| `cchelp usage remove <邮箱>` | 删除一个账号的额度记录 |
+| `cchelp mail <邮箱> [--print]` | 复制账号并用默认浏览器打开收信网址；`--print` 只打印网址 |
+| `cchelp sites` | 列出收信地址 |
+| `cchelp sites add <后缀> <网址>` / `remove <后缀>` / `reset` | 添加、删除收信地址，或恢复默认 |
+| `cchelp sessions [--json]` | 按账号和项目列出全部会话 |
+| `cchelp sessions resume <会话ID或前缀>` | 打印续接指令并复制到剪贴板 |
+| `cchelp --help` / `--version` | 帮助和版本 |
 
 会话的删除只在软件里提供，命令行不提供，免得误删。
 

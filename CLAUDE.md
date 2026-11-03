@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 仓库说明
 
-Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），附带命令行工具 `claude-help`。代码都在 `app/` 下，软件和 CLI 共用同一份核心代码，版本号也相同。
+Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），附带命令行工具 `cchelp`。代码都在 `app/` 下，软件和 CLI 共用同一份核心代码，版本号也相同。
 
 - `app/src/core/`：纯 Node 的核心模块，不依赖 electron。
   - `paths.js`：数据目录 `%USERPROFILE%\.claude\claude-help\` 下的 `usage.json`、`mail-sites.json`。
@@ -16,7 +16,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
     - 完整对话不分账号：`%USERPROFILE%\.claude\projects\<cwd 编码>\<cliSessionId>.jsonl`。
     - 这些是桌面端未公开的内部格式，可能变化，读不到就不显示。
     - 恢复方式只做“复制续接指令”（新会话里粘贴，让 Claude 读旧记录），不改桌面端文件。
-    - 「会话」页和 `claude-help sessions` 都按“账号 → 项目 → 会话”分三层，页面上的项目可以收起，收起状态存在 localStorage。
+    - 「会话」页和 `cchelp sessions` 都按“账号 → 项目 → 会话”分三层，页面上的项目可以收起，收起状态存在 localStorage。
     - 删除只在软件里做，用 `shell.trashItem` 移到回收站。
     - 测试时用 `CLAUDE_HELP_SESSIONS_DIR` 指向假的会话目录，用 `CLAUDE_CONFIG_DIR` 指定 `.claude` 目录。
   - `mailSites.js`：邮箱后缀 → 收信网址。默认只有 `poczta.onet.pl → https://onet.yulishomes.com/`；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
@@ -25,8 +25,9 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - 语言设置 `language`：`system`（默认，系统语言是中文就用中文，否则英文）/`zh`/`en`，在「关于」页切换。
   - preload 用 `sendSync('app:lang')` 同步拿到 `zh` 或 `en`。切换后主进程更新托盘菜单，并用 `webContents.reload()` 重新加载页面（页面里的 `location.reload()` 会被 `will-navigate` 拦下）。
   - 页面静态文字用 `data-i18n`、`data-i18n-placeholder`、`data-i18n-title`、`data-i18n-aria` 标 key，脚本里用 `UI.t(key, vars)`。新增文字时中英两份都要加。
-- `app/src/cli.js`：`claude-help` 命令，包括 `usage`、`usage record`、`usage add`、`usage remove`、`mail`、`sites`、`sessions`、`sessions resume`。用法和“给 Claude 的说明”都在 `--help` 里。
-  - 安装后由安装目录里的 `claude-help.cmd`（源文件 `app/build/claude-help.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
+- `app/src/cli.js`：`cchelp` 命令，包括 `usage`、`usage record`、`usage add`、`usage remove`、`mail`、`sites`、`sessions`、`sessions resume`。用法和“给 Claude 的说明”都在 `--help` 里。
+  - 命令名用 `cchelp` 而不是 `claude-help`：用户说“用 claude help 记录额度”时，Claude 会联想成 `claude --help`。2026-11-03 改名，包名、数据目录 `.claude\claude-help\`、GitHub 仓库名不变。
+  - 安装后由安装目录里的 `cchelp.cmd`（源文件 `app/build/cchelp.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
   - 安装程序通过 `app/build/installer.nsh` 把安装目录加进用户 PATH。
   - 开发时用 `npm run cli -- <参数>`。
 - 分工：额度（`get_usage`）只有 Claude 在桌面端会话里能读。Claude 读取后把 JSON 通过 stdin 交给 CLI；软件和 CLI 自己读不到额度。
