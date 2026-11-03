@@ -62,7 +62,7 @@
 
   function copyResume(s, btn) {
     api.copyResume(s.id).then(function (r) {
-      UI.flashButton(btn, t('common.copied'), 'check');
+      UI.flashButton(btn, '', 'check');
       UI.toast('success', t('sessions.copiedResume', { cwd: r.cwd }));
     }, function (e) {
       UI.toast('error', t('common.copyFailed', { err: UI.errText(e) }));
@@ -91,8 +91,8 @@
 
     var actions = UI.el('div', 'site-actions');
     if (s.transcript) {
-      var path = UI.button({ label: t('sessions.copyPath'), icon: 'link', variant: 'icon', onClick: function () { copyPath(s, path); } });
-      var resume = UI.button({ label: t('sessions.copyResume'), title: t('sessions.copyResumeTitle'), icon: 'history', variant: 'ghost', onClick: function () { copyResume(s, resume); } });
+      var path = UI.button({ label: t('sessions.copyPath'), icon: 'file', variant: 'icon', onClick: function () { copyPath(s, path); } });
+      var resume = UI.button({ label: t('sessions.copyResume'), icon: 'resume', variant: 'icon', onClick: function () { copyResume(s, resume); } });
       actions.append(path, resume);
     } else {
       actions.appendChild(UI.el('span', 'session-missing', t('sessions.noTranscript')));

@@ -115,7 +115,6 @@
       'sessions.copyPath': '复制会话地址',
       'sessions.copiedPath': '已复制会话地址',
       'sessions.copyResume': '接续',
-      'sessions.copyResumeTitle': '复制续接指令，在新会话里粘贴后接着做',
       'sessions.noTranscript': '对话记录已不在',
       'sessions.trash': '删除（移到回收站）',
       'sessions.summary': '{accounts} 个账号 · {sessions} 个会话 · 切换账号后桌面端只显示当前账号的会话',
@@ -294,7 +293,6 @@
       'sessions.copyPath': 'Copy session path',
       'sessions.copiedPath': 'Session path copied',
       'sessions.copyResume': 'Resume',
-      'sessions.copyResumeTitle': 'Copy a resume prompt to paste into a new session',
       'sessions.noTranscript': 'Transcript missing',
       'sessions.trash': 'Delete (move to Recycle Bin)',
       'sessions.summary': function (v) {
