@@ -19,7 +19,7 @@ function checkSite(domain, url) {
   if (!isWebUrl(url)) throw new Error('网址要以 http:// 或 https:// 开头');
 }
 
-// 不预置网址：都由用户在软件或 CLI 里添加
+// 不预置网址：都由用户在软件里添加
 function readMailSites() {
   try {
     const list = JSON.parse(fs.readFileSync(MAIL_SITES_FILE, 'utf8')).sites;

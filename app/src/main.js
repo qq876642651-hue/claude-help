@@ -3,7 +3,8 @@ const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
 const { DATA_DIR } = require('./core/paths');
-const { readUsage, addAccount, removeUsage, restoreUsage, setAccountId } = require('./core/usage');
+const { readUsage, recordUsage, addAccount, removeUsage, restoreUsage, setAccountId, findByAccountId } = require('./core/usage');
+const { syncDesktopUsage, historyFiles } = require('./core/desktopUsage');
 const mailSites = require('./core/mailSites');
 const sessions = require('./core/sessions');
 const memory = require('./core/memory');
@@ -141,31 +142,60 @@ function exactSession(id) {
 
 const sameEmail = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
-// 桌面端当前登录的是不是这个账号：只有 accountId 对得上才算 same，认不出也切换（最多是重新登录一次同一个号）
+// 桌面端当前登录的是不是这个账号：accountId 对得上才算 same。
+// 卡片还没有 accountId、桌面端当前的号也没记在别的卡片上时，可能就是这个号，返回 ask 让用户确认；
+// 不问的话只能切换，而重新登录同一个号时 lastKnownAccountUuid 不变，以后还是认不出来
 function loginMode(email) {
   const current = desktopLogin.currentAccountId();
-  const acc = readUsage().accounts.find((a) => sameEmail(a.email, email));
-  return current && acc && acc.accountId === current ? 'same' : 'switch';
+  const accounts = readUsage().accounts;
+  const acc = accounts.find((a) => sameEmail(a.email, email));
+  if (current && acc && acc.accountId === current) return 'same';
+  if (current && acc && !acc.accountId && !accounts.some((a) => a.accountId === current)) return 'ask';
+  return 'switch';
 }
 
-// 为某个邮箱填好登录页后，10 分钟内桌面端换成一个没记录过的账号 ID，就认定是这个邮箱的，补进记录
+// 把脚本读到的用量页解析成 plan，记到这个邮箱上；返回 { ok, step?, detail? }
+function recordDesktopUsage(email, raw, accountId) {
+  const r = desktopLogin.toPlan(raw);
+  if (!r.ok) return { ok: false, step: r.step, detail: r.detail };
+  try {
+    recordUsage(email, r.plan, accountId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, step: 'parse', detail: e.message };
+  }
+}
+
+// 为某个邮箱填好登录页后，10 分钟内桌面端换了账号 ID 就算登录完成：
+// 换成没记录过的 ID 就补进这个邮箱的记录；ID 属于这个邮箱时，再从桌面端读一次额度
 let idWatch = null;
 function watchNewAccountId(email) {
   if (idWatch) clearInterval(idWatch.timer);
   const before = desktopLogin.currentAccountId();
   const until = Date.now() + 10 * 60000;
   const stop = () => { clearInterval(timer); idWatch = null; };
-  const timer = setInterval(() => {
+  const timer = setInterval(async () => {
     if (Date.now() > until) return stop();
     const id = desktopLogin.currentAccountId();
     if (!id || id === before) return;
     stop();
     const accounts = readUsage().accounts;
     const acc = accounts.find((a) => sameEmail(a.email, email));
-    if (!acc || acc.accountId || accounts.some((a) => a.accountId === id)) return;
+    if (!acc) return;
+    if (!acc.accountId && !accounts.some((a) => a.accountId === id)) {
+      try {
+        setAccountId(email, id);
+      } catch {}
+    }
+    if ((findByAccountId(id) || {}).email !== acc.email || mailBusy) return;
+    // 刚登录完页面还在加载，脚本会等账号按钮出现；这期间不让别的收信同时操作桌面端
+    mailBusy = true;
     try {
-      setAccountId(email, id);
-    } catch {}
+      const r = await desktopLogin.readUsage();
+      if (r.ok) recordUsage(acc.email, r.plan, id);
+    } catch {} finally {
+      mailBusy = false;
+    }
   }, 5000);
   idWatch = { timer };
 }
@@ -173,28 +203,37 @@ function watchNewAccountId(email) {
 let mailBusy = false;
 let importBundle = null; // 「记忆」页正在导入的文件
 
-// 「收信」：桌面端不是这个号（或没登录）就先退出登录、填邮箱、点继续，再在浏览器打开收信页
-async function openMail(email) {
+// 「收信」：桌面端不是这个号（或没登录）就先退出登录、填邮箱、点继续；是这个号就读额度；再在浏览器打开收信页
+// answer 是用户对“桌面端当前登录的是这个号吗”的回答（same | switch）；需要问又没有回答时返回 { ask: true }
+// 测试时用 CLAUDE_HELP_SAME_ANSWER（same | switch）代替回答
+async function openMail(email, answer) {
   email = String(email);
+  let mode = loginMode(email);
+  if (mode === 'ask') {
+    mode = answer || process.env.CLAUDE_HELP_SAME_ANSWER;
+    if (mode !== 'same' && mode !== 'switch') return { ask: true };
+    if (mode === 'same') setAccountId(email, desktopLogin.currentAccountId());
+  }
   clipboard.writeText(email);
-  const login = await desktopLogin.run(email, loginMode(email));
+  const { usage: rawUsage, ...login } = await desktopLogin.run(email, mode);
   if (login.ok && login.action === 'filled') watchNewAccountId(email);
+  const usage = login.ok && login.action === 'none' ? recordDesktopUsage(email, rawUsage, desktopLogin.currentAccountId()) : null;
   // 桌面端被切到了前面；登录出错时把软件叫回来，好让用户看到提示
   if (!login.ok) showWindow();
   const url = mailSites.mailUrlFor(email);
   if (!url) {
     showWindow();
-    return { opened: false, domain: email.split('@')[1] || '', login };
+    return { opened: false, domain: email.split('@')[1] || '', login, usage };
   }
   await shell.openExternal(url);
-  return { opened: true, url, login };
+  return { opened: true, url, login, usage };
 }
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
-// CLI 是整体重写 usage.json，监视目录比监视文件可靠
+// usage.json 是整体重写的，监视目录比监视文件可靠
 function watchUsage() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   let timer = null;
@@ -203,6 +242,27 @@ function watchUsage() {
     clearTimeout(timer);
     timer = setTimeout(() => send('usage:changed', readUsage()), 300);
   });
+}
+
+// 桌面端每 15 分钟往 plan-usage-history.json 记一条样本：变化时同步一次，另外每 5 分钟兜底一次（目录可能后来才出现）
+function watchDesktopUsage() {
+  const sync = () => {
+    try {
+      syncDesktopUsage();
+    } catch {}
+  };
+  sync();
+  let timer = null;
+  for (const file of historyFiles()) {
+    try {
+      fs.watch(path.dirname(file), (_event, name) => {
+        if (name && name !== path.basename(file)) return;
+        clearTimeout(timer);
+        timer = setTimeout(sync, 1000);
+      });
+    } catch {}
+  }
+  setInterval(sync, 5 * 60000);
 }
 
 function registerIpc() {
@@ -288,11 +348,11 @@ function registerIpc() {
     return r;
   });
 
-  ipcMain.handle('mail:open', async (_e, email) => {
+  ipcMain.handle('mail:open', async (_e, email, answer) => {
     if (mailBusy) throw new Error(t('error.mailBusy'));
     mailBusy = true;
     try {
-      return await openMail(email);
+      return await openMail(email, answer);
     } finally {
       mailBusy = false;
     }
@@ -392,6 +452,7 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc();
     setupUpdater();
     watchUsage();
+    watchDesktopUsage();
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());

@@ -26,7 +26,7 @@ function memoryDir(key) {
   return path.join(projectsDir(), key, 'memory');
 }
 
-// 软件和 CLI 的读写都过这里：key 是 global 或 projects 下的目录名，file 是不带路径的 .md
+// 所有读写都过这里：key 是 global 或 projects 下的目录名，file 是不带路径的 .md
 function entryPath(key, file, { mustExist = true } = {}) {
   if (!validKey(key) || !validFile(key, file)) throw new Error('记忆路径不对');
   if (key === GLOBAL) return path.join(claudeDir(), CLAUDE_MD);

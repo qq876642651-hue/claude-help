@@ -10,7 +10,7 @@ function readUsage() {
   }
 }
 
-// plan 由 Claude 手动传进来，可能抄错；不对就报错，免得盖掉好记录
+// plan 是从桌面端界面解析出来的，界面改版可能解析错；不对就报错，免得盖掉好记录
 function checkWindows(windows) {
   if (!Array.isArray(windows) || !windows.length) throw new Error('plan.windows 是空的，没有记录');
   for (const w of windows) {
@@ -22,7 +22,7 @@ function checkWindows(windows) {
   }
 }
 
-// plan 是桌面端 get_usage 返回的 plan 对象；每个账号只保留最新一条
+// plan 的格式和桌面端 get_usage 返回的 plan 对象相同；每个账号只保留最新一条
 // accountId 是桌面端的账号 ID（用来把会话对应到邮箱），没传时沿用旧记录里的
 function recordUsage(email, plan, accountId) {
   email = String(email || '').trim();
@@ -63,11 +63,6 @@ function putRecord(record) {
   }
   accounts.push(record);
   return writeAccounts(accounts);
-}
-
-function findByEmail(email) {
-  const key = String(email || '').trim().toLowerCase();
-  return readUsage().accounts.find((a) => String(a.email).toLowerCase() === key) || null;
 }
 
 function findByAccountId(accountId) {
@@ -118,4 +113,4 @@ function restoreUsage(record) {
   return { count: putRecord(record).length };
 }
 
-module.exports = { readUsage, recordUsage, addAccount, removeUsage, restoreUsage, setAccountId, findByEmail, findByAccountId };
+module.exports = { readUsage, writeAccounts, recordUsage, addAccount, removeUsage, restoreUsage, setAccountId, findByAccountId };

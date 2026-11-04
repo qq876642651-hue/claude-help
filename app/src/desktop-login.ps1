@@ -1,5 +1,5 @@
 # 用 Windows UI Automation 操作 Claude 桌面端的登录：由 desktopLogin.js 运行，参数走环境变量，最后输出一行 JSON
-# CLAUDE_HELP_LOGIN_MODE：probe（只列控件，不点击）| same（已登录就不动）| switch（已登录就先退出）
+# CLAUDE_HELP_LOGIN_MODE：probe（只列控件，不点击）| same（已登录就不动，顺便读额度）| switch（已登录就先退出）| usage（只读额度）
 # 桌面端屏蔽了远程调试参数和 /logout 深链接，只能这样从外面点
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -14,7 +14,7 @@ $CT = [Windows.Automation.ControlType]
 $Scope = [Windows.Automation.TreeScope]
 
 function Done($result) {
-  [Console]::Out.WriteLine(($result | ConvertTo-Json -Compress -Depth 4))
+  [Console]::Out.WriteLine(($result | ConvertTo-Json -Compress -Depth 6))
   exit 0
 }
 function Fail($step, $detail) { Done @{ ok = $false; step = $step; detail = "$detail" } }
@@ -141,6 +141,45 @@ function WaitEmailBox($seconds, $afterLogout) {
   }
 }
 
+# 读当前账号的用量：账号菜单里点「用量」会打开设置的用量页，读完按 Esc 关掉，全程不动鼠标
+# 只交出原始文字（类型、名称、纵坐标、进度条的值），由 desktopLogin.js 解析
+function ReadUsage {
+  $acc = AccountButton $win (All $win)
+  if (-not $acc) { return @{ ok = $false; step = 'login' } }
+  $account = $acc.Current.Name
+  Click $acc
+  $item = Wait 8 { FindNamed (All $win) @('ControlType.MenuItem') $names.usageItem }
+  if (-not $item) {
+    [Windows.Forms.SendKeys]::SendWait('{ESC}')
+    return @{ ok = $false; step = 'menu' }
+  }
+  Click $item
+  $bar = Wait 15 { FindNamed (All $win) @('ControlType.ProgressBar') $names.sessionLimit }
+  if (-not $bar) {
+    [Windows.Forms.SendKeys]::SendWait('{ESC}')
+    return @{ ok = $false; step = 'page' }
+  }
+  Start-Sleep -Milliseconds 300
+  $items = @()
+  foreach ($e in (All $win)) {
+    $type = $e.Current.ControlType.ProgrammaticName -replace '^ControlType\.', ''
+    if ($type -notmatch '^(Text|ProgressBar|Button)$' -or -not $e.Current.Name) { continue }
+    $one = @{ type = $type; name = $e.Current.Name; top = [int](Rect $e).Top }
+    if ($type -eq 'ProgressBar') {
+      try { $one.value = $e.GetCurrentPattern([Windows.Automation.RangeValuePattern]::Pattern).Current.Value } catch {}
+    } elseif ($type -eq 'Button') {
+      if (-not (Matches $e.Current.Name $names.extraUsage)) { continue }
+      try { $one.toggle = "$($e.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState)" } catch {}
+    }
+    $items += $one
+  }
+  # 设置页是窗口里的一层，Esc 关掉；没关掉再按一次
+  [Windows.Forms.SendKeys]::SendWait('{ESC}')
+  $closed = Wait 3 { -not (FindNamed (All $win) @('ControlType.ProgressBar') $names.sessionLimit) }
+  if (-not $closed) { [Windows.Forms.SendKeys]::SendWait('{ESC}') }
+  return @{ ok = $true; account = $account; items = $items }
+}
+
 $win = FindWindow
 if (-not $win -and $mode -ne 'probe') {
   if (-not (LaunchDesktop)) { Fail 'window' 'Claude desktop is not installed' }
@@ -154,7 +193,7 @@ if ($mode -eq 'probe') {
   $items = @()
   foreach ($e in $all) {
     $type = $e.Current.ControlType.ProgrammaticName -replace '^ControlType\.', ''
-    if ($type -notmatch '^(Button|Edit|MenuItem|Hyperlink|CheckBox|RadioButton|ComboBox)$') { continue }
+    if ($type -notmatch '^(Button|Edit|MenuItem|Hyperlink|CheckBox|RadioButton|ComboBox|Text)$') { continue }
     $r = Rect $e
     $items += @{ type = $type; name = $e.Current.Name; id = $e.Current.AutomationId; rect = "$($r.Left),$($r.Top),$($r.Width),$($r.Height)" }
   }
@@ -173,8 +212,16 @@ try {
 $state = Wait 10 { State $win }
 if (-not $state) { Fail 'window' 'page not ready' }
 
+if ($mode -eq 'usage') {
+  if ($state -ne 'account') { Fail 'login' 'not signed in' }
+  $usage = ReadUsage
+  if (-not $usage.ok) { Fail $usage.step '' }
+  Done $usage
+}
+
 if ($state -eq 'account') {
-  if ($mode -eq 'same') { Done @{ ok = $true; action = 'none' } }
+  # 同号时顺便读额度；读不到不影响登录的结果
+  if ($mode -eq 'same') { Done @{ ok = $true; action = 'none'; usage = (ReadUsage) } }
   Click (AccountButton $win (All $win))
   $item = Wait 8 { FindNamed (All $win) @('ControlType.MenuItem', 'ControlType.Button') $names.logout }
   if (-not $item) {

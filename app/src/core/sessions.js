@@ -1,20 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const { claudeDir } = require('./paths');
+const { claudeDir, desktopDataDirs } = require('./paths');
 
 // 桌面端的会话列表按账号分目录：claude-code-sessions\<账号ID>\<组织ID>\local_*.json
 // 完整对话不分账号：<Claude 配置目录>\projects\<cwd 编码>\<cliSessionId>.jsonl
 // 这些是桌面端的内部文件，格式没有公开：只读需要的几个字段，读不到就当没有
 function sessionRoots() {
   if (process.env.CLAUDE_HELP_SESSIONS_DIR) return [process.env.CLAUDE_HELP_SESSIONS_DIR];
-  const roots = [];
-  const local = process.env.LOCALAPPDATA;
-  if (local) {
-    const dataDir = path.join(local, 'Claude-Data');
-    for (const name of safeReaddir(dataDir)) roots.push(path.join(dataDir, name, 'claude-code-sessions'));
-  }
-  if (process.env.APPDATA) roots.push(path.join(process.env.APPDATA, 'Claude', 'claude-code-sessions'));
-  return roots.filter(isDir);
+  return desktopDataDirs().map((dir) => path.join(dir, 'claude-code-sessions')).filter(isDir);
 }
 
 function projectsDir() {
@@ -127,11 +120,6 @@ function findSession(id) {
   return hits[0] || null;
 }
 
-function accountOfSession(id) {
-  const hit = findSession(id);
-  return hit ? hit.accountId : null;
-}
-
 function resumePrompt(session) {
   return [
     `请接着之前的会话「${session.title}」继续。`,
@@ -155,4 +143,4 @@ function sessionFiles(id) {
   return { session: toSession(hit.data), files };
 }
 
-module.exports = { projectsDir, encodeCwd, safeReaddir, isDir, listSessions, findSession, toSession, accountOfSession, resumePrompt, sessionFiles };
+module.exports = { sessionRoots, projectsDir, encodeCwd, safeReaddir, isDir, listSessions, findSession, toSession, resumePrompt, sessionFiles };

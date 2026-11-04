@@ -1,5 +1,5 @@
-// 额度显示用的辅助函数，桌面软件（<script src>）和 CLI（require）共用
-// 默认中文；桌面软件按界面语言调用 setLang('en')，CLI 不调用
+// 额度显示用的辅助函数，写成 UMD 形式，页面用 <script src> 加载
+// 默认中文；软件按界面语言调用 setLang('en')
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.UsageFormat = factory();

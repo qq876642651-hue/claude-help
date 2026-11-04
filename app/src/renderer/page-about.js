@@ -1,17 +1,8 @@
-// 「关于」页：版本与更新、关闭窗口时、语言、命令行说明、数据位置
+// 「关于」页：版本与更新、关闭窗口时、语言、数据位置
 (function () {
   var api = window.claudeHelp;
   var UI = window.UI;
   var t = UI.t;
-
-  var COMMANDS = [
-    ['cchelp', 'about.cmd.usage'],
-    [t('about.cmdMail'), 'about.cmd.mail'],
-    ['cchelp sites', 'about.cmd.sites'],
-    ['cchelp sessions', 'about.cmd.sessions'],
-    ['cchelp memory', 'about.cmd.memory'],
-    ['cchelp --help', 'about.cmd.help'],
-  ];
 
   var UPDATE_STATUSES = ['dev', 'checking', 'latest', 'available', 'downloading', 'downloaded', 'error'];
 
@@ -107,16 +98,6 @@
 
     api.getSettings().then(showSettings);
     api.onSettings(showSettings);
-
-    var list = document.getElementById('cmdList');
-    COMMANDS.forEach(function (c) {
-      var li = UI.el('li');
-      var copy = UI.button({ label: t('about.copyCommand'), icon: 'copy', variant: 'icon', onClick: function () {
-        api.copy(c[0]).then(function () { UI.flashButton(copy, '', 'check'); UI.toast('success', t('about.copiedCommand', { cmd: c[0] })); });
-      } });
-      li.append(UI.el('code', null, c[0]), UI.el('span', 'cmd-desc', t(c[1])), copy);
-      list.appendChild(li);
-    });
 
     api.dataDir().then(function (d) { document.getElementById('dataDir').textContent = d; });
     document.getElementById('openDataDir').addEventListener('click', function () {

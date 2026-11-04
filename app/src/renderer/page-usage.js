@@ -61,9 +61,11 @@
     var foot = UI.el('div', 'meter-foot' + (restored ? ' restored' : ''));
     if (restored) {
       foot.append(UI.icon('check'), t('usage.restored'));
-    } else {
-      foot.append(UI.icon('clock'), t('usage.resetsIn', { time: fmt.duration(new Date(w.resetsAt).getTime() - now) }));
-      foot.title = resetTitle(w.resetsAt);
+    } else if (w.resetsAt) {
+      // 自动同步推算出的重置时间前面加“约”
+      var key = w.resetsAtEstimated ? 'usage.resetsInApprox' : 'usage.resetsIn';
+      foot.append(UI.icon('clock'), t(key, { time: fmt.duration(new Date(w.resetsAt).getTime() - now) }));
+      foot.title = resetTitle(w.resetsAt) + (w.resetsAtEstimated ? '\n' + t('usage.resetApprox') : '');
     }
     box.append(head, track, foot);
     return box;
@@ -84,21 +86,39 @@
     return [].filter.call(cardsEl.querySelectorAll('button[data-mail]'), function (b) { return b.dataset.mail === email; })[0];
   }
 
-  // 主进程先判断桌面端是不是这个号，不是就退出登录、填邮箱、点继续，再打开收信页
-  function openMail(acc) {
+  // 认不出桌面端当前的号时问一句：返回 same | switch，取消返回空串
+  function askSame(email) {
+    var dialog = document.getElementById('sameDialog');
+    document.getElementById('sameTitle').textContent = t('usage.sameTitle', { email: email });
+    dialog.returnValue = '';
+    dialog.showModal();
+    return new Promise(function (resolve) {
+      dialog.addEventListener('close', function () { resolve(dialog.returnValue); }, { once: true });
+    });
+  }
+
+  // 主进程先判断桌面端是不是这个号：不是就退出登录、填邮箱、点继续；是就读额度；再打开收信页
+  function openMail(acc, answer) {
     setMailBusy(acc.email);
-    api.openMail(acc.email).then(function (r) {
+    api.openMail(acc.email, answer).then(function (r) {
       setMailBusy(null);
+      if (r.ask) {
+        return askSame(acc.email).then(function (a) { if (a) openMail(acc, a); });
+      }
       var login = r.login;
+      var usage = r.usage;
       if (login && !login.ok) {
         UI.toast('warn', t('usage.loginFailed', { email: acc.email, step: t('usage.step.' + login.step) }));
       } else if (login && login.action === 'filled') {
         UI.toast('success', t('usage.loginFilled', { email: acc.email }));
       }
+      // 读额度失败不影响收信，单独提示
+      if (usage && !usage.ok) UI.toast('warn', t('usage.usageFailed', { step: t('usage.usageStep.' + usage.step) }));
       if (r.opened) {
         var btn = mailButtonOf(acc.email);
         if (btn) UI.flashButton(btn, t('usage.opened'), 'check');
-        if (!login || login.action === 'none') UI.toast('success', t('usage.mailOpened', { email: acc.email }));
+        if (usage && usage.ok) UI.toast('success', t('usage.usageRecorded', { email: acc.email }));
+        else if (!usage && (!login || login.action === 'none')) UI.toast('success', t('usage.mailOpened', { email: acc.email }));
       } else {
         UI.toast('warn', t('usage.mailNoSite', { email: acc.email, domain: r.domain }));
         window.App.go('sites', { prefillDomain: r.domain });
@@ -150,6 +170,12 @@
       meta.append(warn);
     } else {
       meta.append(UI.el('span', 'plan', acc.plan || t('usage.unknownPlan')), t('usage.recordedAgo', { ago: fmt.ago(acc.recordedAt, now) }));
+      // 自动同步来的记录只有百分比，标出来
+      if (acc.source === 'desktop') {
+        var auto = UI.el('span', 'auto', t('usage.auto'));
+        auto.title = t('usage.autoTitle');
+        meta.append(auto);
+      }
     }
     who.append(email, meta);
     var st = status(acc, now);
@@ -244,7 +270,6 @@
         t('usage.emptyStep1'),
         t('usage.emptyStep2'),
         t('usage.emptyStep3'),
-        t('usage.emptyStep4'),
       ], UI.button({ label: t('usage.add'), icon: 'plus', variant: 'primary', onClick: openAddDialog })));
       return;
     }
@@ -287,12 +312,6 @@
     addDialog = document.getElementById('addAccountDialog');
     addInput = document.getElementById('addAccountEmail');
     addHint = document.getElementById('addAccountHint');
-    var promptBtn = document.getElementById('usageCopyPrompt');
-    promptBtn.addEventListener('click', function () {
-      api.copy(t('usage.recordPrompt')).then(function () { UI.flashButton(promptBtn, t('common.copied'), 'check'); }, function (e) {
-        UI.toast('error', t('common.copyFailed', { err: UI.errText(e) }));
-      });
-    });
     document.getElementById('usageAdd').addEventListener('click', openAddDialog);
     document.getElementById('addAccountForm').addEventListener('submit', submitAdd);
     document.getElementById('addAccountCancel').addEventListener('click', function () { addDialog.close(); });

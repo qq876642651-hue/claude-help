@@ -111,10 +111,8 @@ input, button, select { font: inherit; color: inherit; }
 .page-body { padding: 4px 32px 40px; }
 .page-body.narrow { max-width: 860px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-/* 窄窗口下额度页工具栏放不下一行：「复制记录指令」只留图标，搜索框和排序按钮收窄 */
+/* 窄窗口下额度页工具栏放不下一行：搜索框和排序按钮收窄 */
 @media (max-width: 1040px) {
-  #usageCopyPrompt { width: 32px; padding: 0; }
-  #usageCopyPrompt .btn-label { display: none; }
   #page-usage .search input { width: 134px; }
   #page-usage .segmented button { padding: 0 9px; }
 }
@@ -320,11 +318,6 @@ select.io-target {
 /* ---------- 关于 ---------- */
 .progress { height: 6px; margin-top: 14px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
-.cmd-list { list-style: none; margin: 14px 0 0; padding: 0; }
-.cmd-list li { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
-.cmd-list li + li { border-top: 1px solid var(--border); }
-.cmd-list code { flex: none; min-width: 230px; padding: 4px 8px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); }
-.cmd-list .cmd-desc { flex: 1; color: var(--text-2); font-size: 13px; }
 
 /* ---------- 提示条与确认框 ---------- */
 .toasts { position: fixed; right: 20px; bottom: 20px; z-index: 10; display: flex; flex-direction: column; gap: 8px; width: 360px; max-width: calc(100vw - 40px); }

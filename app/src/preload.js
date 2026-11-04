@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   planMemoryImport: (targets) => ipcRenderer.invoke('memory:importPlan', targets),
   applyMemoryImport: (targets, overwrite) => ipcRenderer.invoke('memory:importApply', targets, overwrite),
 
-  openMail: (email) => ipcRenderer.invoke('mail:open', email),
+  openMail: (email, answer) => ipcRenderer.invoke('mail:open', email, answer),
   openSite: (url) => ipcRenderer.invoke('mail:openSite', url),
   getMailSites: () => ipcRenderer.invoke('mailSites:get'),
   addMailSite: (domain, url) => ipcRenderer.invoke('mailSites:add', domain, url),

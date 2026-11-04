@@ -2,17 +2,13 @@
   "name": "claude-help",
   "productName": "Claude Help",
   "version": "1.2.0",
-  "description": "Claude 账号额度看板与收信工具（含 cchelp 命令行）",
+  "description": "Claude 账号额度看板与收信工具",
   "author": "ZhaoMCX",
   "license": "UNLICENSED",
   "private": true,
   "main": "src/main.js",
-  "bin": {
-    "cchelp": "src/cli.js"
-  },
   "scripts": {
     "start": "electron .",
-    "cli": "node src/cli.js",
     "dist": "electron-builder --win nsis --publish never",
     "icon": "electron scripts/make-icon.js",
     "version:next": "node scripts/release.mjs --dry-run",
@@ -27,16 +23,6 @@
     "files": [
       "src/**/*",
       "package.json"
-    ],
-    "extraFiles": [
-      {
-        "from": "build/cchelp.cmd",
-        "to": "cchelp.cmd"
-      },
-      {
-        "from": "build/cchelp",
-        "to": "cchelp"
-      }
     ],
     "win": {
       "target": "nsis"
