@@ -60,6 +60,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - `ui.js`：界面文字（`t`、`applyI18n`）、图标、按钮、提示条、确认框。
   - `page-*.js`：各页面。
   - `style.css`：设计变量，跟随系统深浅色。
+  - 额度页工具栏的「复制记录指令」复制 `i18n.js` 的 `usage.recordPrompt`：给 agent 直接照做的步骤，改 CLI「给 Claude 的说明」时一起改。
   - 「收信」进行中所有收信按钮禁用；邮箱后缀没配置网址时，跳到「收信地址」页并预填后缀。
 - 命令（在 `app/` 下运行）：
   - `npm start`：开发运行。

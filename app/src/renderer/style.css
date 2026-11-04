@@ -111,6 +111,13 @@ input, button, select { font: inherit; color: inherit; }
 .page-body { padding: 4px 32px 40px; }
 .page-body.narrow { max-width: 860px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* 窄窗口下额度页工具栏放不下一行：「复制记录指令」只留图标，搜索框和排序按钮收窄 */
+@media (max-width: 1040px) {
+  #usageCopyPrompt { width: 32px; padding: 0; }
+  #usageCopyPrompt .btn-label { display: none; }
+  #page-usage .search input { width: 134px; }
+  #page-usage .segmented button { padding: 0 9px; }
+}
 
 /* ---------- 按钮与表单 ---------- */
 .btn {

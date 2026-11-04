@@ -287,6 +287,12 @@
     addDialog = document.getElementById('addAccountDialog');
     addInput = document.getElementById('addAccountEmail');
     addHint = document.getElementById('addAccountHint');
+    var promptBtn = document.getElementById('usageCopyPrompt');
+    promptBtn.addEventListener('click', function () {
+      api.copy(t('usage.recordPrompt')).then(function () { UI.flashButton(promptBtn, t('common.copied'), 'check'); }, function (e) {
+        UI.toast('error', t('common.copyFailed', { err: UI.errText(e) }));
+      });
+    });
     document.getElementById('usageAdd').addEventListener('click', openAddDialog);
     document.getElementById('addAccountForm').addEventListener('submit', submitAdd);
     document.getElementById('addAccountCancel').addEventListener('click', function () { addDialog.close(); });
