@@ -15,6 +15,16 @@ contextBridge.exposeInMainWorld('claudeHelp', {
   trashSession: (id) => ipcRenderer.invoke('sessions:trash', id),
   version: () => ipcRenderer.invoke('app:version'),
 
+  getMemory: () => ipcRenderer.invoke('memory:list'),
+  readMemory: (key, file) => ipcRenderer.invoke('memory:read', key, file),
+  writeMemory: (key, file, text, mtime) => ipcRenderer.invoke('memory:write', key, file, text, mtime),
+  revealMemory: (key, file) => ipcRenderer.invoke('memory:reveal', key, file),
+  trashMemory: (key, file) => ipcRenderer.invoke('memory:trash', key, file),
+  exportMemory: (keys) => ipcRenderer.invoke('memory:export', keys),
+  pickMemoryImport: () => ipcRenderer.invoke('memory:importPick'),
+  planMemoryImport: (targets) => ipcRenderer.invoke('memory:importPlan', targets),
+  applyMemoryImport: (targets, overwrite) => ipcRenderer.invoke('memory:importApply', targets, overwrite),
+
   openMail: (email) => ipcRenderer.invoke('mail:open', email),
   openSite: (url) => ipcRenderer.invoke('mail:openSite', url),
   getMailSites: () => ipcRenderer.invoke('mailSites:get'),

@@ -22,6 +22,9 @@
     <button class="nav-item" type="button" data-page="sessions">
       <span class="icon" data-icon="chat"></span><span data-i18n="nav.sessions"></span>
     </button>
+    <button class="nav-item" type="button" data-page="memory">
+      <span class="icon" data-icon="memory"></span><span data-i18n="nav.memory"></span>
+    </button>
     <button class="nav-item" type="button" data-page="about">
       <span class="icon" data-icon="info"></span><span data-i18n="nav.about"></span>
       <i class="nav-dot" id="updateDot" hidden></i>
@@ -97,6 +100,25 @@
         </div>
       </header>
       <div class="page-body narrow" id="sessionList"></div>
+    </section>
+
+    <!-- 记忆 -->
+    <section class="page" id="page-memory" hidden>
+      <header class="page-head">
+        <div class="page-title">
+          <h1 data-i18n="nav.memory"></h1>
+          <p class="sub" id="memorySummary"></p>
+        </div>
+        <div class="toolbar">
+          <label class="search">
+            <span class="icon" data-icon="search"></span>
+            <input id="memorySearch" type="search" data-i18n-placeholder="memory.search" autocomplete="off" spellcheck="false">
+          </label>
+          <button class="btn" type="button" id="memoryImport"><span class="icon" data-icon="download"></span><span data-i18n="memory.import"></span></button>
+          <button class="btn" type="button" id="memoryExport"><span class="icon" data-icon="upload"></span><span data-i18n="memory.export"></span></button>
+        </div>
+      </header>
+      <div class="page-body narrow" id="memoryList"></div>
     </section>
 
     <!-- 关于 -->
@@ -211,6 +233,50 @@
   </form>
 </dialog>
 
+<dialog class="confirm memory-edit" id="memoryEditDialog">
+  <form method="dialog" id="memoryEditForm">
+    <h2 id="memoryEditTitle"></h2>
+    <p class="sub mono" id="memoryEditPath"></p>
+    <textarea id="memoryEditText" spellcheck="false"></textarea>
+    <div class="confirm-actions">
+      <button class="btn ghost" type="button" id="memoryEditReveal"><span class="icon" data-icon="folder"></span><span data-i18n="memory.reveal"></span></button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" id="memoryEditCancel" data-i18n="common.cancel"></button>
+      <button class="btn primary" type="submit" data-i18n="common.save"></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm memory-io" id="memoryExportDialog">
+  <form method="dialog" id="memoryExportForm">
+    <h2 data-i18n="memory.exportTitle"></h2>
+    <p class="sub" data-i18n="memory.exportSub"></p>
+    <div class="io-list" id="memoryExportList"></div>
+    <div class="confirm-actions">
+      <button class="btn" type="button" id="memoryExportCancel" data-i18n="common.cancel"></button>
+      <button class="btn primary" type="submit"><span class="icon" data-icon="upload"></span><span data-i18n="memory.export"></span></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm memory-io" id="memoryImportDialog">
+  <form method="dialog" id="memoryImportForm">
+    <h2 data-i18n="memory.importTitle"></h2>
+    <p class="sub" id="memoryImportFile"></p>
+    <div class="io-list" id="memoryImportList"></div>
+    <fieldset class="io-policy" id="memoryImportPolicy">
+      <legend data-i18n="memory.importConflict"></legend>
+      <label class="check"><input type="radio" name="memoryConflict" value="skip" checked><span data-i18n="memory.importSkip"></span></label>
+      <label class="check"><input type="radio" name="memoryConflict" value="overwrite"><span data-i18n="memory.importOverwrite"></span></label>
+    </fieldset>
+    <p class="sub" data-i18n="memory.importHint"></p>
+    <div class="confirm-actions">
+      <button class="btn" type="button" id="memoryImportCancel" data-i18n="common.cancel"></button>
+      <button class="btn primary" type="submit" id="memoryImportOk"><span class="icon" data-icon="download"></span><span data-i18n="memory.import"></span></button>
+    </div>
+  </form>
+</dialog>
+
 <dialog class="confirm" id="confirmDialog">
   <form method="dialog">
     <p id="confirmText"></p>
@@ -227,6 +293,7 @@
 <script src="page-usage.js"></script>
 <script src="page-sites.js"></script>
 <script src="page-sessions.js"></script>
+<script src="page-memory.js"></script>
 <script src="page-about.js"></script>
 <script src="app.js"></script>
 </body>

@@ -1,6 +1,6 @@
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const { claudeDir } = require('./paths');
 
 // 桌面端的会话列表按账号分目录：claude-code-sessions\<账号ID>\<组织ID>\local_*.json
 // 完整对话不分账号：<Claude 配置目录>\projects\<cwd 编码>\<cliSessionId>.jsonl
@@ -18,7 +18,12 @@ function sessionRoots() {
 }
 
 function projectsDir() {
-  return path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
+  return path.join(claudeDir(), 'projects');
+}
+
+// Claude Code 按 cwd 给项目目录起名：非字母数字字符都换成 -（路径太长时会截断，所以只能正向算，不能反推）
+function encodeCwd(cwd) {
+  return String(cwd || '').replace(/[^A-Za-z0-9]/g, '-');
 }
 
 function safeReaddir(dir) {
@@ -37,12 +42,12 @@ function isDir(p) {
   }
 }
 
-// cwd 里的非字母数字字符都换成 -；对不上时（比如路径太长被截断）再到各项目目录里找
+// 先按 cwd 编码找；对不上时（比如路径太长被截断）再到各项目目录里找
 function findTranscript(cwd, cliSessionId) {
   if (!cliSessionId) return null;
   const file = cliSessionId + '.jsonl';
   const root = projectsDir();
-  const direct = path.join(root, String(cwd || '').replace(/[^A-Za-z0-9]/g, '-'), file);
+  const direct = path.join(root, encodeCwd(cwd), file);
   if (fs.existsSync(direct)) return direct;
   for (const dir of safeReaddir(root)) {
     const p = path.join(root, dir, file);
@@ -150,4 +155,4 @@ function sessionFiles(id) {
   return { session: toSession(hit.data), files };
 }
 
-module.exports = { listSessions, findSession, toSession, accountOfSession, resumePrompt, sessionFiles };
+module.exports = { projectsDir, encodeCwd, safeReaddir, isDir, listSessions, findSession, toSession, accountOfSession, resumePrompt, sessionFiles };

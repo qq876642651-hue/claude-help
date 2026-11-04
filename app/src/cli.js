@@ -6,7 +6,8 @@ const { spawnSync } = require('child_process');
 const { readUsage, recordUsage, addAccount, removeUsage, findByEmail, findByAccountId } = require('./core/usage');
 const { readMailSites, addSite, removeSite, mailUrlFor } = require('./core/mailSites');
 const { listSessions, findSession, toSession, accountOfSession, resumePrompt } = require('./core/sessions');
-const { USAGE_FILE, MAIL_SITES_FILE } = require('./core/paths');
+const memory = require('./core/memory');
+const { USAGE_FILE, MAIL_SITES_FILE, MEMORY_BACKUP_DIR, claudeDir } = require('./core/paths');
 const fmt = require('./core/format');
 const { version } = require('../package.json');
 
@@ -26,6 +27,13 @@ const HELP = `cchelp ${version} — Claude 账号额度与收信工具（与 Cla
     匹配规则：邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀
   cchelp sessions [--json]                              按账号列出桌面端的全部会话（切换账号后桌面端只显示当前账号的）
   cchelp sessions resume <会话ID或前缀>                  打印并复制续接指令：在当前账号新建会话后粘贴，接着旧会话做
+  cchelp memory [--json]                                列出 Claude Code 的记忆（用户级 CLAUDE.md 和各项目的 memory 目录）
+  cchelp memory export [<项目>...] [--out <文件>]       导出成一个 JSON 文件；项目写 global、目录名、路径或名称的一部分，
+                                                        不写就导出全部；默认存到当前目录的 claude-memory-<日期>.json
+  cchelp memory import <文件> [--to <项目目录>] [--overwrite] [--dry-run]
+                                                        导入记忆：默认按原路径对应项目，--to 改到别的项目（文件里只有一个项目时）；
+                                                        同名但内容不同的默认跳过，--overwrite 覆盖（旧文件先备份）；
+                                                        新条目自动追加到 MEMORY.md；--dry-run 只看会写什么
   cchelp --version | --help
 
 给 Claude 的说明（额度只有你在 Claude 桌面端会话里能读，本工具只负责存数据）：
@@ -38,6 +46,8 @@ const HELP = `cchelp ${version} — Claude 账号额度与收信工具（与 Cla
 数据文件：
   ${USAGE_FILE}
   ${MAIL_SITES_FILE}
+  记忆：${path.join(claudeDir(), 'CLAUDE.md')}、${path.join(claudeDir(), 'projects', '<项目>', 'memory')}
+  导入覆盖前的备份：${MEMORY_BACKUP_DIR}
 `;
 
 class UsageError extends Error {}
@@ -50,7 +60,7 @@ function parseArgs(argv) {
     if (a.startsWith('--')) {
       const name = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('--') && ['sort', 'email', 'file'].includes(name)) {
+      if (next !== undefined && !next.startsWith('--') && ['sort', 'email', 'file', 'out', 'to'].includes(name)) {
         flags[name] = next;
         i++;
       } else {
@@ -271,6 +281,99 @@ function sessions(args, flags) {
   console.log('续接某个会话：cchelp sessions resume <前 8 位 ID>');
 }
 
+// ---- memory ----
+
+const MEMORY_TYPES = { user: '用户', feedback: '反馈', project: '项目', reference: '参考', index: '索引', 'claude-md': '说明' };
+
+function groupName(g) {
+  if (g.kind === 'global') return '全局（用户级 CLAUDE.md）';
+  return g.cwd ? `${path.basename(g.cwd)}（${g.cwd}）` : g.key;
+}
+
+// 按 global、目录名、路径或名称的一部分找组；一个名字对上多个组时报错
+function pickGroups(groups, names) {
+  return names.map((name) => {
+    const q = name.toLowerCase();
+    const exact = groups.filter((g) => g.key.toLowerCase() === q || (g.cwd && path.resolve(g.cwd).toLowerCase() === path.resolve(name).toLowerCase()));
+    const hits = exact.length ? exact : groups.filter((g) => g.kind === 'project' && `${g.key} ${g.cwd || ''}`.toLowerCase().includes(q));
+    if (!hits.length) throw new UsageError(`没找到项目 ${name}，运行 cchelp memory 查看`);
+    if (hits.length > 1) throw new UsageError(`${name} 对上了 ${hits.length} 个项目：${hits.map(groupName).join('、')}，请写完整一点`);
+    return hits[0].key;
+  });
+}
+
+function memoryList(flags) {
+  const groups = memory.listMemory();
+  if (flags.json) return printJson(groups);
+  const now = Date.now();
+  for (const g of groups) {
+    console.log(`${groupName(g)}  ${g.entries.length ? g.entries.length + ' 个文件' : '没有'}`);
+    for (const e of g.entries) {
+      const tag = padDisplay(MEMORY_TYPES[e.type] || e.type, 4);
+      console.log(`  ${tag}  ${padDisplay(e.name, 30)} ${fmt.ago(e.modified, now)}${e.description ? '  ' + e.description : ''}`);
+    }
+    console.log('');
+  }
+}
+
+function memoryExport(names, flags) {
+  const groups = memory.listMemory();
+  const keys = names.length ? pickGroups(groups, names) : null;
+  const bundle = memory.exportMemory(keys);
+  if (!bundle.groups.length) throw new UsageError('没有可导出的记忆');
+  const out = path.resolve(typeof flags.out === 'string' ? flags.out : `claude-memory-${new Date().toISOString().slice(0, 10)}.json`);
+  fs.writeFileSync(out, JSON.stringify(bundle, null, 2) + '\n', 'utf8');
+  const files = bundle.groups.reduce((n, g) => n + Object.keys(g.files).length, 0);
+  console.log(`已导出 ${bundle.groups.length} 组、${files} 个文件到 ${out}`);
+  console.log('里面可能有个人信息，发给别人前先看一下。');
+}
+
+const IMPORT_STATUS = { new: '新增', same: '相同，跳过', conflict: '同名但内容不同' };
+
+function memoryImport(file, flags) {
+  if (!file) throw new UsageError('用法：cchelp memory import <文件> [--to <项目目录>] [--overwrite] [--dry-run]');
+  let bundle;
+  try {
+    bundle = memory.parseBundle(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    throw new UsageError(e.code === 'ENOENT' ? `找不到文件 ${file}` : e.message);
+  }
+  const targets = [];
+  if (typeof flags.to === 'string') {
+    const projects = bundle.groups.map((g, i) => (g.kind === 'project' ? i : -1)).filter((i) => i >= 0);
+    if (projects.length !== 1) throw new UsageError(`文件里有 ${projects.length} 个项目，--to 只能用在只有一个项目的时候`);
+    targets[projects[0]] = { cwd: path.resolve(flags.to) };
+  } else if (flags.to) {
+    throw new UsageError('--to 后面要写项目目录');
+  }
+  const plan = memory.planImport(bundle, targets);
+  for (const p of plan) {
+    const from = p.kind === 'global' ? '全局 CLAUDE.md' : p.source.cwd || p.source.key;
+    const to = p.kind === 'global' ? '' : ` → ${p.target.cwd || p.target.key}${p.target.exists ? '' : '（本机还没有，会新建）'}`;
+    console.log(`${from}${to}`);
+    for (const f of p.files) {
+      const note = f.status === 'conflict' ? (flags.overwrite ? '，覆盖（旧文件先备份）' : '，跳过') : '';
+      console.log(`  ${padDisplay(IMPORT_STATUS[f.status], 16)} ${f.file}${note}`);
+    }
+  }
+  if (flags['dry-run']) {
+    console.log('\n只是预览，没有写入。');
+    return;
+  }
+  const r = memory.applyImport(bundle, targets, { overwrite: Boolean(flags.overwrite) });
+  const parts = [`新增 ${r.written} 个`, r.overwritten && `覆盖 ${r.overwritten} 个`, r.same && `相同 ${r.same} 个`, r.skipped && `跳过 ${r.skipped} 个（加 --overwrite 覆盖）`, r.indexed && `索引补了 ${r.indexed} 行`];
+  console.log(`\n已导入：${parts.filter(Boolean).join('，')}。`);
+  if (r.backupDir) console.log(`覆盖前的旧文件在 ${r.backupDir}`);
+}
+
+function memoryCmd(args, flags) {
+  const [sub, ...rest] = args;
+  if (!sub || sub === 'list') return memoryList(flags);
+  if (sub === 'export') return memoryExport(rest, flags);
+  if (sub === 'import') return memoryImport(rest[0], flags);
+  throw new UsageError(`未知子命令 memory ${sub}`);
+}
+
 function main(argv) {
   const { positional, flags } = parseArgs(argv);
   if (flags.version) return console.log(version);
@@ -287,6 +390,7 @@ function main(argv) {
   if (cmd === 'mail') return mail(rest[0], flags);
   if (cmd === 'sites') return sites(rest);
   if (cmd === 'sessions') return sessions(rest, flags);
+  if (cmd === 'memory') return memoryCmd(rest, flags);
   throw new UsageError(`未知命令 ${cmd}，运行 cchelp --help 查看用法`);
 }
 

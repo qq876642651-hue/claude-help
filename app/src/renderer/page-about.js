@@ -9,6 +9,7 @@
     [t('about.cmdMail'), 'about.cmd.mail'],
     ['cchelp sites', 'about.cmd.sites'],
     ['cchelp sessions', 'about.cmd.sessions'],
+    ['cchelp memory', 'about.cmd.memory'],
     ['cchelp --help', 'about.cmd.help'],
   ];
 

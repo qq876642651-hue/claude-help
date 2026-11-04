@@ -6,6 +6,7 @@ const { DATA_DIR } = require('./core/paths');
 const { readUsage, addAccount, removeUsage, restoreUsage, setAccountId } = require('./core/usage');
 const mailSites = require('./core/mailSites');
 const sessions = require('./core/sessions');
+const memory = require('./core/memory');
 const desktopLogin = require('./desktopLogin');
 const settings = require('./settings');
 const I18n = require('./i18n');
@@ -170,6 +171,7 @@ function watchNewAccountId(email) {
 }
 
 let mailBusy = false;
+let importBundle = null; // 「记忆」页正在导入的文件
 
 // 「收信」：桌面端不是这个号（或没登录）就先退出登录、填邮箱、点继续，再在浏览器打开收信页
 async function openMail(email) {
@@ -225,6 +227,66 @@ function registerIpc() {
     return { title: session.title, count: files.length };
   });
   ipcMain.handle('app:version', () => app.getVersion());
+
+  // 记忆：路径都由 core/memory 按 key + 文件名算，不用渲染进程传来的路径
+  ipcMain.handle('memory:list', () => memory.listMemory());
+  ipcMain.handle('memory:read', (_e, key, file) => memory.readEntry(key, file));
+  ipcMain.handle('memory:write', (_e, key, file, text, mtime) => memory.writeEntry(key, file, text, mtime));
+  ipcMain.handle('memory:reveal', async (_e, key, file) => {
+    const p = memory.entryPath(key, file);
+    if (fs.existsSync(p)) return shell.showItemInFolder(p);
+    const err = await shell.openPath(path.dirname(p));
+    if (err) throw new Error(err);
+  });
+  // 移到回收站，再去掉索引里对应的行；索引本身不让删
+  ipcMain.handle('memory:trash', async (_e, key, file) => {
+    if (file === memory.INDEX) throw new Error(t('error.memoryIndex'));
+    const p = memory.entryPath(key, file);
+    if (!fs.existsSync(p)) throw new Error(t('error.memoryGone'));
+    await shell.trashItem(p);
+    memory.removeFromIndex(key, file);
+  });
+  // CLAUDE_HELP_DIALOG_FILE 只用于测试：导出、导入直接用这个路径，不弹系统文件框
+  ipcMain.handle('memory:export', async (_e, keys) => {
+    const bundle = memory.exportMemory(keys);
+    if (!bundle.groups.length) throw new Error(t('error.memoryEmpty'));
+    const { canceled, filePath } = process.env.CLAUDE_HELP_DIALOG_FILE
+      ? { filePath: process.env.CLAUDE_HELP_DIALOG_FILE }
+      : await dialog.showSaveDialog(win, {
+        defaultPath: path.join(app.getPath('documents'), `claude-memory-${new Date().toISOString().slice(0, 10)}.json`),
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+    if (canceled || !filePath) return null;
+    fs.writeFileSync(filePath, JSON.stringify(bundle, null, 2) + '\n', 'utf8');
+    return { path: filePath, groups: bundle.groups.length };
+  });
+  // 选好的导入文件留在主进程，页面只拿预览，确认时再按这份写入
+  ipcMain.handle('memory:importPick', async () => {
+    const { canceled, filePaths } = process.env.CLAUDE_HELP_DIALOG_FILE
+      ? { filePaths: [process.env.CLAUDE_HELP_DIALOG_FILE] }
+      : await dialog.showOpenDialog(win, {
+        properties: ['openFile'],
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+    if (canceled || !filePaths.length) return null;
+    importBundle = memory.parseBundle(fs.readFileSync(filePaths[0], 'utf8'));
+    return {
+      file: path.basename(filePaths[0]),
+      exportedAt: importBundle.exportedAt || null,
+      projects: memory.localProjects(),
+      plan: memory.planImport(importBundle),
+    };
+  });
+  ipcMain.handle('memory:importPlan', (_e, targets) => {
+    if (!importBundle) throw new Error(t('error.memoryNoImport'));
+    return memory.planImport(importBundle, targets || []);
+  });
+  ipcMain.handle('memory:importApply', (_e, targets, overwrite) => {
+    if (!importBundle) throw new Error(t('error.memoryNoImport'));
+    const r = memory.applyImport(importBundle, targets || [], { overwrite: Boolean(overwrite) });
+    importBundle = null;
+    return r;
+  });
 
   ipcMain.handle('mail:open', async (_e, email) => {
     if (mailBusy) throw new Error(t('error.mailBusy'));

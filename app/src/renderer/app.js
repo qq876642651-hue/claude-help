@@ -2,8 +2,8 @@
 (function () {
   var api = window.claudeHelp;
   var UI = window.UI;
-  var PAGES = { usage: window.UsagePage, sites: window.SitesPage, sessions: window.SessionsPage, about: window.AboutPage };
-  var ORDER = ['usage', 'sites', 'sessions', 'about'];
+  var PAGES = { usage: window.UsagePage, sites: window.SitesPage, sessions: window.SessionsPage, memory: window.MemoryPage, about: window.AboutPage };
+  var ORDER = ['usage', 'sites', 'sessions', 'memory', 'about'];
   var current = null;
 
   function go(name, opts) {

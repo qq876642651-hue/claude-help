@@ -24,13 +24,21 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
     - 「会话」页和 `cchelp sessions` 都按“账号 → 项目 → 会话”分三层，页面上的项目可以收起，收起状态存在 localStorage。
     - 删除只在软件里做，用 `shell.trashItem` 移到回收站。
     - 测试时用 `CLAUDE_HELP_SESSIONS_DIR` 指向假的会话目录，用 `CLAUDE_CONFIG_DIR` 指定 `.claude` 目录。
+  - `memory.js`：Claude Code 的记忆。只管本机文件，不碰 claude.ai 的记忆。
+    - 位置：`<配置目录>\projects\<cwd 编码>\memory\*.md`（`MEMORY.md` 是索引，其余每条一个文件，带 frontmatter），用户级 `<配置目录>\CLAUDE.md` 作为 key 为 `global` 的一组。配置目录由 `paths.js` 的 `claudeDir()` 给出（`CLAUDE_CONFIG_DIR` 优先）。
+    - 项目的真实路径：读该项目任意一个 `.jsonl` 开头的 `"cwd"`，没有再看桌面端会话列表；目录名只能由 cwd 正向编码（`sessions.js` 的 `encodeCwd`），长路径会截断，不能反推。
+    - 所有读写都经过 `entryPath(key, file)` 校验，主进程不用渲染进程传来的路径。
+    - 编辑时带上打开时的 mtime，文件期间被改过（Claude 可能正在写）就不保存。只有全局 `CLAUDE.md` 可以新建。
+    - 导出格式：`{ format: 'claude-help-memory', version: 1, groups: [{ kind, key, cwd, files: { 文件名: 内容 } }] }`。
+    - 导入：先 `planImport` 预览（每个文件 `new`/`same`/`conflict`），再 `applyImport`。目标默认按原 cwd，先认本机 cwd 相同的项目目录。冲突默认跳过；覆盖前把旧文件备份到数据目录的 `memory-backups\<时间>\<key>\`。`MEMORY.md` 不整体覆盖，只把写入的条目追加到本地索引（用导入包索引里的那一行，没有就按 frontmatter 生成）。
+    - 删除和编辑只在软件里做，删除用 `shell.trashItem` 并去掉索引里的那一行，索引本身不能删。
   - `mailSites.js`：邮箱后缀 → 收信网址。不预置网址（分发给别人时不该默认指向第三方网站），也就没有“恢复默认”；邮箱域名等于后缀或以“.后缀”结尾即匹配，多条匹配时取最长的后缀。
   - `format.js`：额度显示辅助函数，写成 UMD 形式，渲染进程用 `<script src>` 加载，CLI 用 `require`。默认中文，软件按界面语言调用 `setLang('en')`。
 - `app/src/i18n.js`：软件界面的中英文字表（UMD），主进程和页面共用。CLI 和 core 里的报错、续接指令保持中文。
   - 语言设置 `language`：`system`（默认，系统语言是中文就用中文，否则英文）/`zh`/`en`，在「关于」页切换。
   - preload 用 `sendSync('app:lang')` 同步拿到 `zh` 或 `en`。切换后主进程更新托盘菜单，并用 `webContents.reload()` 重新加载页面（页面里的 `location.reload()` 会被 `will-navigate` 拦下）。
   - 页面静态文字用 `data-i18n`、`data-i18n-placeholder`、`data-i18n-title`、`data-i18n-aria` 标 key，脚本里用 `UI.t(key, vars)`。新增文字时中英两份都要加。
-- `app/src/cli.js`：`cchelp` 命令，包括 `usage`、`usage record`、`usage add`、`usage remove`、`mail`、`sites`、`sessions`、`sessions resume`。用法和“给 Claude 的说明”都在 `--help` 里。
+- `app/src/cli.js`：`cchelp` 命令，包括 `usage`、`usage record`、`usage add`、`usage remove`、`mail`、`sites`、`sessions`、`sessions resume`、`memory`、`memory export`、`memory import`。用法和“给 Claude 的说明”都在 `--help` 里。
   - 命令名用 `cchelp` 而不是 `claude-help`：用户说“用 claude help 记录额度”时，Claude 会联想成 `claude --help`。2026-11-03 改名，包名、数据目录 `.claude\claude-help\`、GitHub 仓库名不变。
   - 安装后由安装目录里的 `cchelp.cmd`（源文件 `app/build/cchelp.cmd`）以 `ELECTRON_RUN_AS_NODE=1` 运行软件自带的 exe。
   - Git Bash 不会把 `cchelp` 解析成 `cchelp.cmd`，所以同目录还放一个无扩展名的 sh 脚本（`app/build/cchelp`，转调 `cchelp.cmd`，必须是 LF 换行，由 `.gitattributes` 固定）。
@@ -55,7 +63,9 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
   - 设置存在 `src/settings.js` 管理的 `userData\settings.json`，CLI 不用。
   - 托盘和窗口图标用 `src/assets/icon.png`，由 `npm run icon` 生成。
   - 测试时用 `CLAUDE_HELP_CLOSE_ANSWER`（`tray`/`quit`/`cancel`，可加 `-remember`）跳过关闭弹窗。
-- `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分四个页面：「额度」「收信地址」「会话」「关于」，`Ctrl+1/2/3/4` 切换。
+  - 记忆的导出、导入用系统文件框；测试时用 `CLAUDE_HELP_DIALOG_FILE` 指定文件，跳过文件框。导入时选好的文件留在主进程，页面只拿预览。
+- `app/src/renderer/`：原生 HTML/CSS/JS，不用框架。左侧导航分五个页面：「额度」「收信地址」「会话」「记忆」「关于」，`Ctrl+1/2/3/4/5` 切换。
+  - 「记忆」页按“全局 → 各项目”列出记忆，分组可以收起（存在 localStorage），每条可以查看编辑（`Ctrl+S` 保存，有改动时关闭要确认）和删除；工具栏有导入、导出。导入框里每组可以改目标项目，有冲突时才显示“跳过/覆盖”。
   - `app.js`：路由。
   - `ui.js`：界面文字（`t`、`applyI18n`）、图标、按钮、提示条、确认框。
   - `page-*.js`：各页面。
