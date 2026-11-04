@@ -97,7 +97,7 @@
     });
   }
 
-  // 主进程先判断桌面端是不是这个号：不是就退出登录、填邮箱、点继续；是就读额度；再打开收信页
+  // 主进程先判断桌面端是不是这个号：是就只读额度；不是就读旧账号的额度，再退出登录、填邮箱、点继续，然后打开收信页
   function openMail(acc, answer) {
     setMailBusy(acc.email);
     api.openMail(acc.email, answer).then(function (r) {
@@ -112,12 +112,18 @@
       } else if (login && login.action === 'filled') {
         UI.toast('success', t('usage.loginFilled', { email: acc.email }));
       }
+      // 同号只记额度，不打开收信页
+      if (login && login.ok && login.action === 'none') {
+        if (usage && usage.ok) UI.toast('success', t('usage.usageRecordedOnly', { email: usage.email }));
+        else if (usage) UI.toast('warn', t('usage.usageFailedOnly', { step: t('usage.usageStep.' + usage.step) }));
+        return;
+      }
       // 读额度失败不影响收信，单独提示
       if (usage && !usage.ok) UI.toast('warn', t('usage.usageFailed', { step: t('usage.usageStep.' + usage.step) }));
       if (r.opened) {
         var btn = mailButtonOf(acc.email);
         if (btn) UI.flashButton(btn, t('usage.opened'), 'check');
-        if (usage && usage.ok) UI.toast('success', t('usage.usageRecorded', { email: acc.email }));
+        if (usage && usage.ok) UI.toast('success', t('usage.usageRecorded', { email: usage.email }));
         else if (!usage && (!login || login.action === 'none')) UI.toast('success', t('usage.mailOpened', { email: acc.email }));
       } else {
         UI.toast('warn', t('usage.mailNoSite', { email: acc.email, domain: r.domain }));

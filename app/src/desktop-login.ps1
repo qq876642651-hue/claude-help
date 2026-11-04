@@ -1,5 +1,6 @@
 # 用 Windows UI Automation 操作 Claude 桌面端的登录：由 desktopLogin.js 运行，参数走环境变量，最后输出一行 JSON
 # CLAUDE_HELP_LOGIN_MODE：probe（只列控件，不点击）| same（已登录就不动，顺便读额度）| switch（已登录就先退出）| usage（只读额度）
+# CLAUDE_HELP_LOGIN_READ=1：switch 时退出前先读额度
 # 桌面端屏蔽了远程调试参数和 /logout 深链接，只能这样从外面点
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -13,7 +14,11 @@ $AE = [Windows.Automation.AutomationElement]
 $CT = [Windows.Automation.ControlType]
 $Scope = [Windows.Automation.TreeScope]
 
+# 退出前读到的额度：后面的步骤失败也要交出去
+$leavingUsage = $null
+
 function Done($result) {
+  if ($leavingUsage) { $result.usage = $leavingUsage }
   [Console]::Out.WriteLine(($result | ConvertTo-Json -Compress -Depth 6))
   exit 0
 }
@@ -47,11 +52,14 @@ function LaunchDesktop {
   return $true
 }
 
+# 翻页时控件会失效，查询抛异常就当“还没好”，下一轮再查
 function Wait($seconds, $test) {
   $until = (Get-Date).AddSeconds($seconds)
   do {
-    $r = & $test
-    if ($r) { return $r }
+    try {
+      $r = & $test
+      if ($r) { return $r }
+    } catch {}
     Start-Sleep -Milliseconds 300
   } while ((Get-Date) -lt $until)
   return $null
@@ -74,13 +82,14 @@ function AccountButton($win, $all) {
   return $null
 }
 
-# 登录页的邮箱框：按名称认；认不出时，页面上只有一个输入框就用它。已登录的页面也有输入框（提示词），所以有账号按钮时不算
+# 登录页的邮箱框：按名称认；认不出时，只有一个输入框且页面上有「继续」按钮才用它。
+# 已登录的页面也有输入框（提示词），退出途中账号按钮先消失、提示词框还在，所以光看账号按钮不够
 function EmailBox($win, $all) {
   if (AccountButton $win $all) { return $null }
   $edits = @($all | Where-Object { $_.Current.ControlType -eq $CT::Edit -and -not $_.Current.IsOffscreen })
   $hit = $edits | Where-Object { Matches $_.Current.Name $names.email } | Select-Object -First 1
   if ($hit) { return $hit }
-  if ($edits.Count -eq 1) { return $edits[0] }
+  if ($edits.Count -eq 1 -and (FindNamed $all @('ControlType.Button') $names.continue)) { return $edits[0] }
   return $null
 }
 
@@ -127,12 +136,13 @@ $clicked = @{ start = [DateTime]::MinValue; confirm = $false }
 function WaitEmailBox($seconds, $afterLogout) {
   Wait $seconds {
     $all = All $win
+    $btn = StartButton $win $all
+    if ($btn) {
+      if (((Get-Date) - $clicked.start).TotalSeconds -gt 3) { Click $btn; $clicked.start = Get-Date }
+      return $null
+    }
     $box = EmailBox $win $all
     if ($box) { return $box }
-    if (((Get-Date) - $clicked.start).TotalSeconds -gt 3) {
-      $btn = StartButton $win $all
-      if ($btn) { Click $btn; $clicked.start = Get-Date; return $null }
-    }
     if ($afterLogout -and -not $clicked.confirm) {
       $btn = FindNamed $all @('ControlType.Button') $names.logout
       if ($btn) { Click $btn; $clicked.confirm = $true }
@@ -222,7 +232,14 @@ if ($mode -eq 'usage') {
 if ($state -eq 'account') {
   # 同号时顺便读额度；读不到不影响登录的结果
   if ($mode -eq 'same') { Done @{ ok = $true; action = 'none'; usage = (ReadUsage) } }
-  Click (AccountButton $win (All $win))
+  # 退出前先读这个号的额度；读不到也照常退出
+  if ($env:CLAUDE_HELP_LOGIN_READ -eq '1') {
+    try { $leavingUsage = ReadUsage } catch { $leavingUsage = @{ ok = $false; step = 'script'; detail = "$($_.Exception.Message)" } }
+  }
+  # 刚读完额度时设置页可能还在关，等账号按钮能用
+  $acc = Wait 5 { AccountButton $win (All $win) }
+  if (-not $acc) { Fail 'logout' 'account button not found' }
+  Click $acc
   $item = Wait 8 { FindNamed (All $win) @('ControlType.MenuItem', 'ControlType.Button') $names.logout }
   if (-not $item) {
     [Windows.Forms.SendKeys]::SendWait('{ESC}')
@@ -230,7 +247,10 @@ if ($state -eq 'account') {
   }
   Click $item
   $box = WaitEmailBox 30 $true
-  if (-not $box) { Fail 'logout' 'login page did not appear' }
+  if (-not $box) {
+    $step = if (Wait 1 { AccountButton $win (All $win) }) { 'logout' } else { 'email' }
+    Fail $step 'login page did not appear'
+  }
 } else {
   $box = WaitEmailBox 15 $false
   if (-not $box) { Fail 'email' 'email box not found' }
@@ -247,8 +267,10 @@ try {
   if ($vp.Current.Value -ne $email) { Fail 'email' 'value not accepted' }
 } catch { Fail 'email' $_.Exception.Message }
 
-$btn = FindNamed (All $win) @('ControlType.Button') $names.continue
-if ($btn) { Click $btn } else { $box.SetFocus(); [Windows.Forms.SendKeys]::SendWait('{ENTER}') }
+# 没有「继续」按钮就报错，不按回车：万一认错了输入框，回车会把邮箱当消息发出去
+$btn = Wait 5 { FindNamed (All $win) @('ControlType.Button') $names.continue }
+if (-not $btn) { Fail 'continue' 'continue button not found' }
+Click $btn
 
 # 填着邮箱的输入框消失（换成“去查收邮件”之类的页面）就算成功
 $gone = Wait 15 { -not (EmailStillThere (All $win)) }

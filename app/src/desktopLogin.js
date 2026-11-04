@@ -22,7 +22,7 @@ const NAMES = {
 };
 
 const SCRIPT = path.join(__dirname, 'desktop-login.ps1');
-const TIMEOUT_MS = 90000;
+const TIMEOUT_MS = 120000;
 
 // 桌面端当前账号：config.json 里的 lastKnownAccountUuid。可能有多份数据目录，取最近改过的那份
 function configFiles() {
@@ -65,20 +65,20 @@ function runScript(env) {
 }
 
 // mode：same（已登录就不动，顺便读额度）| switch（已登录就先退出）。返回 { ok, action: none | filled, usage?, step, detail }
-// usage 是脚本交出的原始结果，用 toPlan 转成 plan
+// usage 是脚本交出的原始结果，用 toPlan 转成 plan；readFirst 时 switch 退出前先读当前账号的额度，后面失败也会交出
 // 测试时用 CLAUDE_HELP_LOGIN_RESULT 跳过桌面端：none | filled | fail:<步骤> | auto（same 返回 none，switch 返回 filled）；
-// same 时的 usage 用 CLAUDE_HELP_DESKTOP_USAGE（原始结果的 JSON 或文件路径）
-function run(email, mode) {
+// usage 用 CLAUDE_HELP_DESKTOP_USAGE（原始结果的 JSON 或文件路径）
+function run(email, mode, readFirst) {
   const fake = process.env.CLAUDE_HELP_LOGIN_RESULT;
   if (fake) {
     const m = /^fail:(.+)$/.exec(fake);
     const action = fake === 'auto' ? (mode === 'same' ? 'none' : 'filled') : fake;
     const result = m ? { ok: false, step: m[1] } : { ok: true, action };
-    if (result.action === 'none') result.usage = fakeUsage() || { ok: false, step: 'script', detail: 'no CLAUDE_HELP_DESKTOP_USAGE' };
+    if (result.action === 'none' || readFirst) result.usage = fakeUsage() || { ok: false, step: 'script', detail: 'no CLAUDE_HELP_DESKTOP_USAGE' };
     return new Promise((resolve) => setTimeout(() => resolve(result), 800));
   }
   if (process.platform !== 'win32') return Promise.resolve({ ok: false, step: 'window', detail: 'Windows only' });
-  return runScript({ CLAUDE_HELP_LOGIN_EMAIL: email, CLAUDE_HELP_LOGIN_MODE: mode });
+  return runScript({ CLAUDE_HELP_LOGIN_EMAIL: email, CLAUDE_HELP_LOGIN_MODE: mode, CLAUDE_HELP_LOGIN_READ: readFirst ? '1' : '' });
 }
 
 // 只列出桌面端窗口里的控件，不点击；桌面端改版后用来查名称

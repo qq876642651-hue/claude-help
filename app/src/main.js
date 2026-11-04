@@ -154,13 +154,13 @@ function loginMode(email) {
   return 'switch';
 }
 
-// 把脚本读到的用量页解析成 plan，记到这个邮箱上；返回 { ok, step?, detail? }
+// 把脚本读到的用量页解析成 plan，记到这个邮箱上；返回 { ok, email?, step?, detail? }
 function recordDesktopUsage(email, raw, accountId) {
   const r = desktopLogin.toPlan(raw);
   if (!r.ok) return { ok: false, step: r.step, detail: r.detail };
   try {
     recordUsage(email, r.plan, accountId);
-    return { ok: true };
+    return { ok: true, email };
   } catch (e) {
     return { ok: false, step: 'parse', detail: e.message };
   }
@@ -203,7 +203,7 @@ function watchNewAccountId(email) {
 let mailBusy = false;
 let importBundle = null; // 「记忆」页正在导入的文件
 
-// 「收信」：桌面端不是这个号（或没登录）就先退出登录、填邮箱、点继续；是这个号就读额度；再在浏览器打开收信页
+// 「收信」：桌面端是这个号就只读额度；不是这个号（或没登录）就先读旧账号的额度，再退出登录、填邮箱、点继续，然后在浏览器打开收信页
 // answer 是用户对“桌面端当前登录的是这个号吗”的回答（same | switch）；需要问又没有回答时返回 { ask: true }
 // 测试时用 CLAUDE_HELP_SAME_ANSWER（same | switch）代替回答
 async function openMail(email, answer) {
@@ -214,12 +214,21 @@ async function openMail(email, answer) {
     if (mode !== 'same' && mode !== 'switch') return { ask: true };
     if (mode === 'same') setAccountId(email, desktopLogin.currentAccountId());
   }
+  // 要退出的号对得上某张卡才读额度：页面上只有显示名，对不上就不知道该记到哪个邮箱
+  const current = desktopLogin.currentAccountId();
+  const leaving = mode === 'switch' ? findByAccountId(current) : null;
   clipboard.writeText(email);
-  const { usage: rawUsage, ...login } = await desktopLogin.run(email, mode);
+  const { usage: rawUsage, ...login } = await desktopLogin.run(email, mode, Boolean(leaving));
   if (login.ok && login.action === 'filled') watchNewAccountId(email);
-  const usage = login.ok && login.action === 'none' ? recordDesktopUsage(email, rawUsage, desktopLogin.currentAccountId()) : null;
+  const owner = login.ok && login.action === 'none' ? email : leaving && leaving.email;
+  const usage = rawUsage && owner ? recordDesktopUsage(owner, rawUsage, current) : null;
   // 桌面端被切到了前面；登录出错时把软件叫回来，好让用户看到提示
   if (!login.ok) showWindow();
+  // 同号不用登录，也就不用收信：记完额度回到软件
+  if (login.ok && login.action === 'none') {
+    showWindow();
+    return { opened: false, login, usage };
+  }
   const url = mailSites.mailUrlFor(email);
   if (!url) {
     showWindow();
