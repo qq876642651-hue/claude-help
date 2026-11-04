@@ -53,7 +53,7 @@ Claude Help 是一个显示 Claude 账号额度的桌面软件（Electron），�
     - 同号判断：桌面端 `config.json` 的 `lastKnownAccountUuid` 等于这张卡的 `accountId` 才算同号。
     - 桌面端只在账号 ID 变化时写 `lastKnownAccountUuid`，退出登录不清空它；重新登录同一个号时它不变，所以认不出“登回了同一个号”。
     - 因此卡片没有 `accountId`、桌面端当前的 ID 也没记在别的卡片上时，返回 `{ ask: true }`，页面用 `#sameDialog` 问“桌面端当前登录的是这个号吗”，答“是”就 `setAccountId` 后按同号处理。测试时用 `CLAUDE_HELP_SAME_ANSWER`（`same`/`switch`）代替回答。
-    - 填好登录页后 10 分钟内，`lastKnownAccountUuid` 变了就算登录完成：变成没记录过的 ID 就用 `setAccountId` 记到这个邮箱上；ID 属于这个邮箱时再读一次额度。读的时候占着 `mailBusy`，免得和下一次收信同时操作桌面端。
+    - 填好登录页后 10 分钟内，`lastKnownAccountUuid` 变了就算登录完成：变成没记录过的 ID 就用 `setAccountId` 记到这个邮箱上。登录后不读额度（会再弹一次用量页，打断刚登录的用户），新账号的百分比等采样同步，完整额度等下次对这个号收信时读。
 - `app/src/desktopLogin.js` + `desktop-login.ps1`：用 Windows UI Automation 操作桌面端的登录页和用量页（PowerShell 走 `-EncodedCommand`，参数走环境变量）。全程用控件自己的 Invoke/Expand 和键盘，不动鼠标。
   - 桌面端屏蔽了 `--remote-debugging-port`，`claude://` 深链接也拦了 `/logout`、`/login`，所以只能从外面点界面。
   - 网页内容的无障碍树要被查询过才会生成，脚本会等它出现。窗口元素不接受 `SetFocus`，用 `WScript.Shell.AppActivate` 置前。

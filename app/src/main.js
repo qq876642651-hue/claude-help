@@ -167,14 +167,14 @@ function recordDesktopUsage(email, raw, accountId) {
 }
 
 // 为某个邮箱填好登录页后，10 分钟内桌面端换了账号 ID 就算登录完成：
-// 换成没记录过的 ID 就补进这个邮箱的记录；ID 属于这个邮箱时，再从桌面端读一次额度
+// 换成没记录过的 ID 就补进这个邮箱的记录。不再读额度，免得刚登录又弹出用量页；百分比等采样同步
 let idWatch = null;
 function watchNewAccountId(email) {
   if (idWatch) clearInterval(idWatch.timer);
   const before = desktopLogin.currentAccountId();
   const until = Date.now() + 10 * 60000;
   const stop = () => { clearInterval(timer); idWatch = null; };
-  const timer = setInterval(async () => {
+  const timer = setInterval(() => {
     if (Date.now() > until) return stop();
     const id = desktopLogin.currentAccountId();
     if (!id || id === before) return;
@@ -186,15 +186,6 @@ function watchNewAccountId(email) {
       try {
         setAccountId(email, id);
       } catch {}
-    }
-    if ((findByAccountId(id) || {}).email !== acc.email || mailBusy) return;
-    // 刚登录完页面还在加载，脚本会等账号按钮出现；这期间不让别的收信同时操作桌面端
-    mailBusy = true;
-    try {
-      const r = await desktopLogin.readUsage();
-      if (r.ok) recordUsage(acc.email, r.plan, id);
-    } catch {} finally {
-      mailBusy = false;
     }
   }, 5000);
   idWatch = { timer };
